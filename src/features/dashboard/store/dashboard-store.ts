@@ -9,15 +9,6 @@ import type {
   SectionKey,
   TimeBoxItem,
 } from "../types";
-import {
-  SAMPLE_BRAIN_DUMP,
-  SAMPLE_MEMO,
-  SAMPLE_NOT_TO_DO,
-  SAMPLE_PRIORITIES,
-  SAMPLE_SELF_DEV,
-  SAMPLE_TIMEBOX,
-  SAMPLE_URGENT,
-} from "../constants";
 
 type PlannerState = {
   selectedDate: string;
@@ -85,13 +76,13 @@ const calculateEndTime = (startAt: string, durationMin: number): string => {
 };
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
-  brainDump: SAMPLE_BRAIN_DUMP,
-  priorities: SAMPLE_PRIORITIES,
-  urgent: SAMPLE_URGENT,
-  selfDev: SAMPLE_SELF_DEV,
-  notToDo: SAMPLE_NOT_TO_DO,
-  timeBox: SAMPLE_TIMEBOX,
-  memo: SAMPLE_MEMO,
+  brainDump: [],
+  priorities: [],
+  urgent: [],
+  selfDev: [],
+  notToDo: [],
+  timeBox: [],
+  memo: [],
   selectedDate: new Date().toISOString().split("T")[0],
   goal: "",
 

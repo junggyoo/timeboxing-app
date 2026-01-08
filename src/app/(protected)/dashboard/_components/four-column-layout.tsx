@@ -22,7 +22,7 @@ export function FourColumnLayout() {
         </div>
 
         {/* Column 2: Lists (Process) */}
-        <div className="flex h-full flex-col overflow-hidden rounded-lg border bg-card">
+        <div className="flex h-full flex-col overflow-hidden">
           <ListsColumn />
         </div>
 
