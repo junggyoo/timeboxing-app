@@ -1,6 +1,5 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { useState } from "react";
@@ -8,19 +7,6 @@ import { CreateTimeboxDialog } from "@/app/(protected)/dashboard/_components/cre
 import { useTimeBox } from "../../hooks/use-dashboard";
 import { EmptyState } from "../empty-state";
 import { SectionCard } from "../section-card";
-import type { TimeBoxStatus } from "../../types";
-
-const STATUS_VARIANT: Record<TimeBoxStatus, "default" | "secondary" | "outline"> = {
-  ongoing: "default",
-  done: "secondary",
-  scheduled: "outline",
-};
-
-const STATUS_LABEL: Record<TimeBoxStatus, string> = {
-  ongoing: "진행중",
-  done: "완료",
-  scheduled: "예정",
-};
 
 export function TimeboxSection() {
   const { items } = useTimeBox();
@@ -61,9 +47,6 @@ export function TimeboxSection() {
                     {item.startAt} - {item.endAt} · {item.durationMin}분
                   </p>
                 </div>
-                <Badge variant={STATUS_VARIANT[item.status]}>
-                  {STATUS_LABEL[item.status]}
-                </Badge>
               </li>
             ))}
           </ul>

@@ -14,21 +14,18 @@ const DUMMY_TIMEBOXES = [
     startTime: "10:00",
     endTime: "11:30",
     title: "주간 보고서 작성",
-    status: "planned" as const,
   },
   {
     id: "2",
     startTime: "13:00",
     endTime: "15:00",
     title: "팀 미팅 및 브레인스토밍",
-    status: "planned" as const,
   },
   {
     id: "3",
     startTime: "16:30",
     endTime: "17:00",
     title: "이메일 확인 및 회신",
-    status: "planned" as const,
   },
 ];
 
@@ -92,7 +89,6 @@ export function TimelineView() {
                               startTime={timebox.startTime}
                               endTime={timebox.endTime}
                               title={timebox.title}
-                              status={timebox.status}
                             />
                           ))}
                         </>

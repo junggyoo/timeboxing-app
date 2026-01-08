@@ -6,9 +6,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
-  CalendarCheck,
   ChevronDown,
   ChevronUp,
+  Clock,
   Trash2,
   X,
 } from "lucide-react";
@@ -83,7 +83,7 @@ export function ItemRow({
     <div
       ref={rowRef}
       className={cn(
-        "group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50",
+        "group flex items-center gap-2 rounded-md px-0 py-1.5 transition-colors hover:bg-muted/50",
         isCompleted && "opacity-60",
         isScheduled && !isCompleted && "opacity-50"
       )}
@@ -91,7 +91,7 @@ export function ItemRow({
       tabIndex={0}
     >
       {isScheduled && (
-        <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
+        <Clock className="h-3.5 w-3.5 shrink-0 text-primary" />
       )}
       {isInverted ? (
         <Button
@@ -136,22 +136,6 @@ export function ItemRow({
           </span>
         )}
       </div>
-
-      {item.tags && item.tags.length > 0 && (
-        <div className="flex gap-1">
-          {item.tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="text-xs">
-              {tag}
-            </Badge>
-          ))}
-        </div>
-      )}
-
-      {item.note && (
-        <Badge variant="outline" className="text-xs shrink-0">
-          {item.note}
-        </Badge>
-      )}
 
       <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
         {showReorder && (

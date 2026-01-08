@@ -9,9 +9,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
-import type { TimeBoxItem, TimeBoxStatus } from "@/features/dashboard/types";
-import { Clock, Pencil, Trash2 } from "lucide-react";
+import type { TimeBoxItem } from "@/features/dashboard/types";
+import { Clock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
+import { TaskSelectorSheet } from "./task-selector-sheet";
 
 const generateTimeSlots = (): string[] => {
   const slots: string[] = [];
@@ -24,40 +25,37 @@ const generateTimeSlots = (): string[] => {
 
 const TIME_SLOTS = generateTimeSlots();
 
-const STATUS_VARIANT: Record<TimeBoxStatus, "default" | "secondary" | "outline"> = {
-  ongoing: "default",
-  done: "secondary",
-  scheduled: "outline",
-};
-
-const STATUS_LABEL: Record<TimeBoxStatus, string> = {
-  ongoing: "진행중",
-  done: "완료",
-  scheduled: "예정",
-};
-
 const SLOT_HEIGHT = 48; // 30분당 높이 (px)
 
 type TimeSlotProps = {
   time: string;
+  onTap?: (time: string) => void;
 };
 
-function TimeSlot({ time }: TimeSlotProps) {
+function TimeSlot({ time, onTap }: TimeSlotProps) {
   const { setNodeRef, isOver } = useDroppable({
     id: `timeline-${time}`,
   });
 
   const isHour = time.endsWith(":00");
 
+  const handleClick = () => {
+    // Only trigger on touch devices (coarse pointer)
+    if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
+      onTap?.(time);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{ height: SLOT_HEIGHT }}
       className={cn(
-        "group relative flex border-b transition-colors",
+        "group relative flex border-b transition-colors cursor-pointer",
         isOver && "bg-primary/10",
         isHour ? "border-border" : "border-border/30"
       )}
+      onClick={handleClick}
     >
       <div
         className={cn(
@@ -68,9 +66,14 @@ function TimeSlot({ time }: TimeSlotProps) {
         {time}
       </div>
       <div className="relative flex-1">
-        {isOver && (
+        {isOver ? (
           <div className="flex h-full items-center pl-2 text-xs text-muted-foreground">
             여기에 드롭하세요
+          </div>
+        ) : (
+          /* Mobile tap hint - only visible on touch devices */
+          <div className="lg:hidden flex h-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+            <Plus className="h-4 w-4 text-muted-foreground/50" />
           </div>
         )}
       </div>
@@ -188,12 +191,6 @@ function TimeBlock({ item }: TimeBlockProps) {
           >
             <div className="flex items-center justify-between gap-2">
               <p className="truncate text-sm font-medium">{item.title}</p>
-              <Badge
-                variant={STATUS_VARIANT[item.status]}
-                className="shrink-0 text-xs"
-              >
-                {STATUS_LABEL[item.status]}
-              </Badge>
             </div>
             <p className="text-xs text-muted-foreground">
               {item.startAt} - {item.endAt} ({item.durationMin}분)
@@ -237,33 +234,56 @@ function TimeBlock({ item }: TimeBlockProps) {
 
 export function TimelineSchedule() {
   const items = useDashboardStore(useShallow((state) => state.timeBox));
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [selectedSlot, setSelectedSlot] = useState<string>("");
+
+  const handleSlotTap = (time: string) => {
+    setSelectedSlot(time);
+    setSheetOpen(true);
+  };
+
+  const handleSheetClose = (open: boolean) => {
+    setSheetOpen(open);
+    if (!open) {
+      setSelectedSlot("");
+    }
+  };
 
   return (
-    <Card className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-muted-foreground" />
-          <h3 className="text-sm font-semibold">Time Box</h3>
-        </div>
-        <Badge variant="outline" className="text-xs">
-          {items.length}개 일정
-        </Badge>
-      </div>
-      <ScrollArea className="flex-1">
-        <div className="relative p-2">
-          {/* 배경: 시간 슬롯 그리드 (드롭 영역) */}
-          {TIME_SLOTS.map((time) => (
-            <TimeSlot key={time} time={time} />
-          ))}
-
-          {/* 오버레이: 타임박스 아이템들 (absolute positioning) */}
-          <div className="pointer-events-none absolute inset-0 left-16 right-2 top-2">
-            {items.map((item) => (
-              <TimeBlock key={item.id} item={item} />
-            ))}
+    <>
+      <Card className="flex h-full flex-col">
+        <div className="flex items-center justify-between border-b px-4 py-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-muted-foreground" />
+            <h3 className="text-sm font-semibold">Time Box</h3>
           </div>
+          <Badge variant="outline" className="text-xs">
+            {items.length}개 일정
+          </Badge>
         </div>
-      </ScrollArea>
-    </Card>
+        <ScrollArea className="flex-1">
+          <div className="relative p-2">
+            {/* 배경: 시간 슬롯 그리드 (드롭 영역) */}
+            {TIME_SLOTS.map((time) => (
+              <TimeSlot key={time} time={time} onTap={handleSlotTap} />
+            ))}
+
+            {/* 오버레이: 타임박스 아이템들 (absolute positioning) */}
+            <div className="pointer-events-none absolute inset-0 left-16 right-2 top-2">
+              {items.map((item) => (
+                <TimeBlock key={item.id} item={item} />
+              ))}
+            </div>
+          </div>
+        </ScrollArea>
+      </Card>
+
+      {/* Mobile Task Selector Bottom Sheet */}
+      <TaskSelectorSheet
+        open={sheetOpen}
+        onOpenChange={handleSheetClose}
+        targetTime={selectedSlot}
+      />
+    </>
   );
 }
