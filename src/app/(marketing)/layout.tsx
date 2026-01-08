@@ -1,8 +1,4 @@
 import type { Metadata } from "next";
-import "./globals.css";
-import Providers from "./providers";
-import { loadCurrentUser } from "@/features/auth/server/load-current-user";
-import { CurrentUserProvider } from "@/features/auth/context/current-user-context";
 
 export const metadata: Metadata = {
   title: "타임박스 집중 관리 - 빠른 온보딩과 멀티 디바이스 알림",
@@ -29,24 +25,37 @@ export const metadata: Metadata = {
     title: "타임박스 집중 관리",
     description: "60초 온보딩, 멀티 디바이스 동기화, 집중·휴식 알람",
   },
+  alternates: {
+    canonical: "https://example.com/",
+  },
 };
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
+type MarketingLayoutProps = {
   children: React.ReactNode;
-}>) {
-  const currentUser = await loadCurrentUser();
+};
 
+export default function MarketingLayout({ children }: MarketingLayoutProps) {
   return (
-    <html lang="ko" suppressHydrationWarning>
-      <body className="antialiased font-sans">
-        <Providers>
-          <CurrentUserProvider initialState={currentUser}>
-            {children}
-          </CurrentUserProvider>
-        </Providers>
-      </body>
-    </html>
+    <>
+      {children}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            name: "Timebox Focus",
+            url: "https://example.com/",
+            description:
+              "60초 만에 타임박스를 만들고 알람으로 집중을 지키는 생산성 도구",
+            potentialAction: {
+              "@type": "SearchAction",
+              target: "https://example.com/search?q={search_term_string}",
+              "query-input": "required name=search_term_string",
+            },
+          }),
+        }}
+      />
+    </>
   );
 }

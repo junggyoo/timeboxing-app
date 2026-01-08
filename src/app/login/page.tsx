@@ -23,7 +23,7 @@ export default function LoginPage({ params }: LoginPageProps) {
 
   useEffect(() => {
     if (isAuthenticated) {
-      const redirectedFrom = searchParams.get("redirectedFrom") ?? "/";
+      const redirectedFrom = searchParams.get("redirectedFrom") ?? "/dashboard";
       router.replace(redirectedFrom);
     }
   }, [isAuthenticated, router, searchParams]);
@@ -78,7 +78,7 @@ export default function LoginPage({ params }: LoginPageProps) {
 
         if (nextAction === "success") {
           await refresh();
-          const redirectedFrom = searchParams.get("redirectedFrom") ?? "/";
+          const redirectedFrom = searchParams.get("redirectedFrom") ?? "/dashboard";
           router.replace(redirectedFrom);
         } else {
           setErrorMessage(nextAction);
