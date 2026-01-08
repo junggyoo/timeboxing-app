@@ -1,17 +1,7 @@
 {
   "totalCount": 3,
-  "downloadedAt": "2026-01-08T02:45:31.981Z",
+  "downloadedAt": "2026-01-08T02:52:38.532Z",
   "tasks": [
-    {
-      "taskId": "T-001",
-      "summary": "서비스의 핵심 디자인 시스템 정의: 컬러 팔레트 및 타이포그래피 설정",
-      "status": "BACKLOG",
-      "importance": "MUST",
-      "complexity": 8,
-      "urgency": 10,
-      "createdAt": "2026-01-08T02:37:27.204Z",
-      "updatedAt": "2026-01-08T02:37:27.204Z"
-    },
     {
       "taskId": "T-002",
       "summary": "메인 대시보드 UI-only 정적 목업 페이지 생성",
@@ -31,6 +21,16 @@
       "urgency": 8,
       "createdAt": "2026-01-08T02:37:27.204Z",
       "updatedAt": "2026-01-08T02:37:27.204Z"
+    },
+    {
+      "taskId": "T-001",
+      "summary": "서비스의 핵심 디자인 시스템 정의: 컬러 팔레트 및 타이포그래피 설정",
+      "status": "DONE",
+      "importance": "MUST",
+      "complexity": 8,
+      "urgency": 10,
+      "createdAt": "2026-01-08T02:37:27.204Z",
+      "updatedAt": "2026-01-08T02:51:31.824Z"
     }
   ]
 }

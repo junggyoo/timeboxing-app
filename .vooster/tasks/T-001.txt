@@ -1,7 +1,7 @@
 # 서비스의 핵심 디자인 시스템 정의: 컬러 팔레트 및 타이포그래피 설정
 
 **Task ID:** T-001
-**Status:** BACKLOG
+**Status:** DONE
 **Importance:** MUST
 **Complexity:** 8/10
 **Urgency:** 10/10
@@ -63,4 +63,4 @@ MUST Guidelines:
 ---
 
 **Created:** 2026-01-08T02:37:27.204Z
-**Updated:** 2026-01-08T02:37:27.204Z
+**Updated:** 2026-01-08T02:51:31.824Z
