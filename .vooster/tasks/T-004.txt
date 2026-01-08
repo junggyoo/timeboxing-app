@@ -1,0 +1,175 @@
+# Supabase 인증 시스템 통합 및 Timebox CRUD API 구축
+
+**Task ID:** T-004
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 8/10
+**Urgency:** 9/10
+**Dependencies:** None
+
+## Description
+
+### 목적
+Supabase Auth 기반 이메일 비밀번호 및 Google OAuth 통합 인증을 구축하고, 인증된 사용자만 접근 가능한 Timebox CRUD API를 Next.js App Router Route Handlers로 제공한다. 신규 가입 시 profiles 테이블 자동 생성과 연동, 기본 에러 처리, 문서화까지 포함한다.
+
+### requirements
+- 사용자는 이메일 비밀번호로 회원가입 및 로그인을 수행할 수 있어야 한다.
+- 사용자는 구글 계정으로 원클릭 소셜 로그인을 수행할 수 있어야 한다.
+- 로그인 회원가입 UI에 구글로 시작하기 버튼을 제공하고 진행 상태 표시 및 오류 피드백을 제공한다.
+- 신규 가입 성공 시 profiles 테이블에 기본 프로필 레코드가 자동으로 생성되어야 한다.
+- 인증된 사용자만 Timebox API 엔드포인트에 접근할 수 있어야 하며 각 요청에서 세션을 검증한다.
+- Timebox CRUD 엔드포인트는 생성 조회 수정 삭제를 모두 지원하고 본인 데이터만 접근 가능해야 한다.
+- API는 표준 상태코드 200 201 204 400 401 403 404 409 429 500을 적절히 반환한다.
+- 최소 1개 이상의 요청 예시와 응답 예시를 포함한 API 스펙을 제공한다.
+- Supabase 프로젝트는 ap-northeast-1 리전에 생성하고 RLS를 활성화하여 개인정보 보호 규정을 준수한다.
+
+### implementation details
+- 아키텍처 및 기술 스택
+  - 프레임워크 Next.js 14 App Router TypeScript
+  - 인증 및 데이터 supabase-js v2 및 @supabase/ssr 공식 권장 방식 적용
+  - 입력 검증 zod, 로깅 pino 혹은 console 대체 가능, 테스트 Playwright Vitest
+  - 배포 환경 변수 관리 Vercel 환경 변수와 Supabase Dashboard 변수 동기화
+- Supabase 설정
+  - 프로젝트 리전 ap-northeast-1
+  - Auth 설정 이메일 비밀번호 활성화, 패스워드 정책 최신 기본값 유지, Magic Link 비활성 선택 사항
+  - Google Provider 활성화 및 승인 범위 openid email profile
+  - Site URL 로컬 http://localhost:3000 프로덕션 https://your-domain
+  - Additional Redirect URLs 로컬 http://localhost:3000/auth/callback 프로덕션 https://your-domain/auth/callback
+- 환경 변수
+  - NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY 필수
+  - SUPABASE_SERVICE_ROLE_KEY 서버 전용 비밀 값 필요 서버 사이드 스크립트 트리거 테스트 및 마이그레이션용
+- 데이터 모델 및 RLS 설계
+  - profiles 테이블 id uuid pk references auth.users id on delete cascade, email text unique, nickname text nullable, created_at timestamptz default now, updated_at timestamptz default now
+  - timeboxes 테이블 id uuid pk default gen_random_uuid, user_id uuid not null references auth.users id on delete cascade, title text not null, description text, start_at timestamptz not null, end_at timestamptz not null, duration_minutes int generated always as round(extract(epoch from end_at - start_at) 60) stored, status text check in scheduled in_progress completed canceled default scheduled, created_at timestamptz default now, updated_at timestamptz default now
+  - 인덱스 ix_timeboxes_user_id, ix_timeboxes_user_id_start_at
+  - RLS 활성화 및 정책 본인 데이터만 access 가능 select insert update delete using user_id = auth.uid with check user_id = auth.uid
+  - 신규 사용자 트리거 함수 handle_new_user로 auth.users 삽입 시 profiles 자동 생성
+- 인증 흐름 및 UI
+  - 로그인 회원가입 페이지에 이메일 폼과 구글로 시작하기 버튼을 분리 배치 로딩 상태와 에러 토스트 제공
+  - 소셜 로그인 완료 후 추가 정보 닉네임 입력을 위한 온보딩 다이얼로그 옵션 제공 단, 필수는 아님 기본 닉네임은 이메일 로컬파트로 자동 생성 가능
+- Next.js 통합 방법
+  - 클라이언트 createBrowserClient 사용
+  - 서버 라우트 핸들러 및 서버 컴포넌트 createServerClient 사용 쿠키 읽기 쓰기 옵션 설정
+  - middleware.ts에서 @supabase/ssr 헬퍼로 토큰 갱신과 세션 동기화 처리 필요 보호 경로 접근 시 세션 없으면 로그인 페이지로 리다이렉트 선택적
+  - auth 콜백 라우트 auth/callback에서 exchangeCodeForSession 호출하여 세션 교환 후 대시보드로 리다이렉트
+- API 설계 Next.js Route Handlers
+  - POST /api/timeboxes 본문 zod 검증 후 현재 사용자로 레코드 생성 201 반환
+  - GET /api/timeboxes 쿼리 from to 범위 필터 및 페이지네이션 limit cursor 지원 200 반환
+  - GET /api/timeboxes/:id 본인 소유 검증 후 단건 200 반환
+  - PUT /api/timeboxes/:id 본인 소유 검증 및 부분 업데이트 200 반환
+  - DELETE /api/timeboxes/:id 본인 소유 검증 후 삭제 204 반환
+- 에러 처리
+  - 세션 없음 401, 소유권 불일치 403, 유효성 오류 400, 미존재 404, 충돌 409, 시스템 오류 500
+- 보안 및 개인정보
+  - RLS 필수, 최소 권한 원칙 유지, 서비스 롤 키는 서버에서만 사용, 쿠키 secure httpOnly sameSite 설정, 데이터 마스킹 고려
+  - 개인정보 최소 수집 이메일과 닉네임만 저장 정책과 약관 링크 노출
+- 확장성 고려
+  - 추후 Realtime 구독을 위해 timeboxes 변경 이벤트 트리거와 채널 이름 규약 정의 예정
+  - 대량 조회 대비 인덱스 및 범위 필터 우선
+
+### 의사코드
+```ts
+// lib/supabase/server.ts
+export const getServerClient = (cookies) => createServerClient({
+  supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL,
+  supabaseKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  cookies
+})
+
+// middleware.ts
+// on each request, refresh session cookies
+const supabase = createServerClient({ cookies })
+await supabase.auth.getSession()
+
+// app/auth/callback/route.ts
+export async function GET(req) {
+  const supabase = getServerClient(cookies())
+  await supabase.auth.exchangeCodeForSession()
+  return NextResponse.redirect(new URL('/dashboard', req.url))
+}
+
+// app/api/_utils/auth.ts
+export async function getSessionOrThrow(cookies) {
+  const supabase = getServerClient(cookies)
+  const { data } = await supabase.auth.getUser()
+  if (!data?.user) throw new HttpError(401, 'unauthorized')
+  return { supabase, user: data.user }
+}
+
+// app/api/timeboxes/route.ts
+export async function GET(req) {
+  const { supabase, user } = await getSessionOrThrow(cookies())
+  const { from, to, limit = 50 } = parseQuery(req.url)
+  let q = supabase.from('timeboxes').select('*').eq('user_id', user.id).order('start_at', { ascending: true }).limit(limit)
+  if (from) q = q.gte('start_at', from)
+  if (to) q = q.lte('end_at', to)
+  const { data, error } = await q
+  if (error) return json(error.message, 500)
+  return json(data, 200)
+}
+export async function POST(req) {
+  const { supabase, user } = await getSessionOrThrow(cookies())
+  const body = await req.json()
+  const input = TimeboxCreateSchema.parse(body)
+  const { data, error } = await supabase.from('timeboxes').insert({ ...input, user_id: user.id }).select('*').single()
+  if (error) return json(error.message, 400)
+  return json(data, 201)
+}
+
+// app/api/timeboxes/[id]/route.ts
+export async function PUT(req, { params }) {
+  const { supabase, user } = await getSessionOrThrow(cookies())
+  const input = TimeboxUpdateSchema.parse(await req.json())
+  const { data, error } = await supabase.from('timeboxes').update(input).eq('id', params.id).eq('user_id', user.id).select('*').single()
+  if (error) return json(error.message, error.code === 'PGRST116' ? 404 : 400)
+  return json(data, 200)
+}
+export async function DELETE(req, { params }) {
+  const { supabase, user } = await getSessionOrThrow(cookies())
+  const { error } = await supabase.from('timeboxes').delete().eq('id', params.id).eq('user_id', user.id)
+  if (error) return json(error.message, 400)
+  return new Response(null, { status: 204 })
+}
+
+// 클라이언트 로그인 UI 동작
+// email sign in
+await supabase.auth.signInWithPassword({ email, password })
+// google oauth
+await supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: origin + '/auth/callback' } })
+```
+
+### API 스펙 및 예시
+- 엔드포인트 POST /api/timeboxes
+  - 요청 본문 예시
+    - { 'title': 'Deep Work', 'description': 'MVP 집중', 'start_at': '2026-01-08T09:00:00Z', 'end_at': '2026-01-08T10:00:00Z', 'status': 'scheduled' }
+  - 응답 201 예시
+    - { 'id': 'uuid', 'user_id': 'uuid', 'title': 'Deep Work', 'duration_minutes': 60, 'created_at': '...', 'updated_at': '...' }
+- 에러 예시 401
+  - { 'error': 'unauthorized' }
+
+### 테스트 전략
+- 단위 테스트
+  - zod 스키마 유효성 검증 정상 케이스와 누락 필드 타입 오류 케이스
+  - 유틸 getSessionOrThrow 무세션 401 발생 검증
+- 통합 테스트 Vitest supertest 혹은 Next Route Handler 테스트 유틸
+  - 각 엔드포인트의 200 201 204 400 401 403 404 경로 검증 Mock 쿠키로 세션 주입
+- E2E 테스트 Playwright
+  - 이메일 가입 로그인 플로우 정상 완료 후 대시보드 이동 확인
+  - 구글 로그인 플로우 리다이렉트 및 세션 생성 확인 구글 테스트 계정 사용
+  - CRUD 시나리오 생성 조회 수정 삭제 전체 조합 및 소유권 위반 403 검증
+- 보안 및 RLS 테스트 Supabase SQL
+  - 다른 사용자 토큰으로 타 사용자 레코드 접근 불가 확인
+- 문서 검증
+  - Postman 컬렉션으로 예시 요청 응답 스냅샷 테스트 및 401 403 공통 에러 명세 일치 확인
+
+### 완료 기준
+- 이메일 비밀번호 및 구글 로그인이 로컬과 프로덕션에서 정상 동작하고 세션이 유지된다.
+- 신규 가입 시 profiles 레코드가 자동 생성된다.
+- Timebox CRUD API가 인증을 강제하고 본인 데이터만 접근 가능하며 상태코드가 요구사항에 부합한다.
+- 최소 1개 이상의 요청 예시를 포함한 API 문서가 저장소에 존재하고 최신 상태다.
+- 주요 경로에 대한 테스트가 통과하고 회귀 테스트 체크리스트가 업데이트된다.
+
+---
+
+**Created:** 2026-01-08T03:21:05.694Z
+**Updated:** 2026-01-08T03:21:05.694Z

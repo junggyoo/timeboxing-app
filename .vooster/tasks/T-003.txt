@@ -1,7 +1,7 @@
 # 대시보드 내 '타임박스 생성' 모달 UI 및 클라이언트 로직 구현
 
 **Task ID:** T-003
-**Status:** BACKLOG
+**Status:** DONE
 **Importance:** MUST
 **Complexity:** 8/10
 **Urgency:** 8/10
@@ -67,4 +67,4 @@ MUST Guidelines:
 ---
 
 **Created:** 2026-01-08T02:37:27.204Z
-**Updated:** 2026-01-08T02:37:27.204Z
+**Updated:** 2026-01-08T03:22:35.407Z

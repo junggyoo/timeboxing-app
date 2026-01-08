@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TimeboxCard } from "./timebox-card";
+import { CreateTimeboxDialog } from "./create-timebox-dialog";
 
 const HOURS = Array.from({ length: 15 }, (_, i) => i + 8);
 
@@ -31,6 +33,8 @@ const DUMMY_TIMEBOXES = [
 ];
 
 export function TimelineView() {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-white">
@@ -45,10 +49,18 @@ export function TimelineView() {
             })}
           </p>
         </div>
-        <Button className="bg-[#2563EB] hover:bg-[#1D4ED8]">
+        <Button
+          className="bg-[#2563EB] hover:bg-[#1D4ED8]"
+          onClick={() => setIsDialogOpen(true)}
+        >
           <Plus className="h-4 w-4 mr-2" />새 타임박스
         </Button>
       </div>
+
+      <CreateTimeboxDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+      />
 
       <div className="flex-1 overflow-y-auto px-6 py-6">
         <div className="max-w-4xl mx-auto">
