@@ -20,6 +20,7 @@ type DraggableItemProps = {
   isFirst?: boolean;
   isLast?: boolean;
   onSchedule?: () => void;
+  isScheduled?: boolean;
 };
 
 export function DraggableItem({
@@ -35,6 +36,7 @@ export function DraggableItem({
   isFirst,
   isLast,
   onSchedule,
+  isScheduled = false,
 }: DraggableItemProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
@@ -73,6 +75,7 @@ export function DraggableItem({
           onMoveDown={onMoveDown}
           isFirst={isFirst}
           isLast={isLast}
+          isScheduled={isScheduled}
         />
       </div>
       {onSchedule && (

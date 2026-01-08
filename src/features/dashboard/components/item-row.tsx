@@ -6,6 +6,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import {
   ArrowRight,
+  CalendarCheck,
   ChevronDown,
   ChevronUp,
   Trash2,
@@ -29,6 +30,7 @@ type ItemRowProps = {
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
+  isScheduled?: boolean;
 };
 
 export function ItemRow({
@@ -45,6 +47,7 @@ export function ItemRow({
   onMoveDown,
   isFirst = false,
   isLast = false,
+  isScheduled = false,
 }: ItemRowProps) {
   const [isEditing, setIsEditing] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
@@ -81,11 +84,15 @@ export function ItemRow({
       ref={rowRef}
       className={cn(
         "group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50",
-        isCompleted && "opacity-60"
+        isCompleted && "opacity-60",
+        isScheduled && !isCompleted && "opacity-50"
       )}
       onKeyDown={handleKeyDown}
       tabIndex={0}
     >
+      {isScheduled && (
+        <CalendarCheck className="h-3.5 w-3.5 shrink-0 text-primary" />
+      )}
       {isInverted ? (
         <Button
           variant="ghost"

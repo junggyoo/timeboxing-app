@@ -55,7 +55,11 @@ type DashboardActions = {
   updateTimeBlockDuration: (id: string, durationMin: number) => void;
 };
 
-type DashboardStore = DashboardState & PlannerState & DashboardActions & PlannerActions;
+type DashboardSelectors = {
+  getScheduledSourceIds: () => Set<string>;
+};
+
+type DashboardStore = DashboardState & PlannerState & DashboardActions & PlannerActions & DashboardSelectors;
 
 const createItem = (title: string, tags?: string[]): BaseItem => ({
   id: crypto.randomUUID(),
@@ -80,7 +84,7 @@ const calculateEndTime = (startAt: string, durationMin: number): string => {
   return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
 };
 
-export const useDashboardStore = create<DashboardStore>((set) => ({
+export const useDashboardStore = create<DashboardStore>((set, get) => ({
   brainDump: SAMPLE_BRAIN_DUMP,
   priorities: SAMPLE_PRIORITIES,
   urgent: SAMPLE_URGENT,
@@ -202,10 +206,11 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
         endAt: calculateEndTime(startAt, durationMin),
         durationMin,
         status: "scheduled",
+        sourceItemId: itemId,
+        sourceSection: sourceSection,
       };
 
       return {
-        [sourceSection]: sourceItems.filter((i) => i.id !== itemId),
         timeBox: [...state.timeBox, newTimeBox],
       };
     }),
@@ -225,4 +230,13 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
 
   setSelectedDate: (date) => set({ selectedDate: date }),
   setGoal: (goal) => set({ goal }),
+
+  getScheduledSourceIds: () => {
+    const state = get();
+    return new Set(
+      state.timeBox
+        .filter((item) => item.sourceItemId)
+        .map((item) => item.sourceItemId!)
+    );
+  },
 }));

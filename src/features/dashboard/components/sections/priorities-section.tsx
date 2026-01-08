@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { usePriorities } from "../../hooks/use-dashboard";
+import { useDashboardStore } from "../../store/dashboard-store";
 import { MAX_PRIORITIES } from "../../constants";
 import { DraggableItem } from "../draggable-item";
 import { EmptyState } from "../empty-state";
@@ -13,6 +14,7 @@ import type { BaseItem } from "../../types";
 
 export function PrioritiesSection() {
   const { items, add, edit, remove, toggle, reorder } = usePriorities();
+  const scheduledIds = useDashboardStore((state) => state.getScheduledSourceIds());
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<BaseItem | null>(null);
 
@@ -67,6 +69,7 @@ export function PrioritiesSection() {
                     isFirst={index === 0}
                     isLast={index === items.length - 1}
                     onSchedule={() => handleSchedule(item)}
+                    isScheduled={scheduledIds.has(item.id)}
                   />
                 </div>
               </li>
