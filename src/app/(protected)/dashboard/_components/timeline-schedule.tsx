@@ -232,7 +232,11 @@ function TimeBlock({ item }: TimeBlockProps) {
   );
 }
 
-export function TimelineSchedule() {
+type TimelineScheduleProps = {
+  fullHeight?: boolean;
+};
+
+export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
   const items = useDashboardStore(useShallow((state) => state.timeBox));
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string>("");

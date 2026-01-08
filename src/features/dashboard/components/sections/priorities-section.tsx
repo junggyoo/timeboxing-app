@@ -12,7 +12,11 @@ import { SectionCard } from "../section-card";
 import { QuickScheduleDialog } from "@/app/(protected)/dashboard/_components/quick-schedule-dialog";
 import type { BaseItem } from "../../types";
 
-export function PrioritiesSection() {
+type PrioritiesSectionProps = {
+	fullHeight?: boolean;
+};
+
+export function PrioritiesSection({ fullHeight }: PrioritiesSectionProps) {
 	const { items, add, edit, remove, toggle, reorder } = usePriorities();
 	const scheduledIds = useDashboardStore((state) =>
 		state.getScheduledSourceIds()
@@ -45,7 +49,7 @@ export function PrioritiesSection() {
 
 	return (
 		<>
-			<SectionCard title="Priorities" icon="Target" headerAction={headerAction}>
+			<SectionCard title="Priorities" icon="Target" headerAction={headerAction} fullHeight={fullHeight}>
 				{items.length < MAX_PRIORITIES && (
 					<QuickAddInput placeholder="오늘의 우선순위 추가" onAdd={handleAdd} />
 				)}

@@ -10,7 +10,11 @@ import { SectionCard } from "../section-card";
 import { QuickScheduleDialog } from "@/app/(protected)/dashboard/_components/quick-schedule-dialog";
 import type { BaseItem } from "../../types";
 
-export function UrgentWorkSection() {
+type UrgentWorkSectionProps = {
+	fullHeight?: boolean;
+};
+
+export function UrgentWorkSection({ fullHeight }: UrgentWorkSectionProps) {
 	const { items, add, edit, remove, toggle } = useUrgent();
 	const scheduledIds = useDashboardStore((state) =>
 		state.getScheduledSourceIds()
@@ -25,7 +29,7 @@ export function UrgentWorkSection() {
 
 	return (
 		<>
-			<SectionCard title="Urgent Work" icon="AlertCircle">
+			<SectionCard title="Urgent Work" icon="AlertCircle" fullHeight={fullHeight}>
 				<QuickAddInput placeholder="긴급 업무 추가" onAdd={add} />
 				{items.length === 0 ? (
 					<EmptyState message="긴급한 업무가 없습니다" />

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getSupabaseBrowserClient } from "@/lib/supabase/browser-client";
 import { useCurrentUser } from "@/features/auth/hooks/useCurrentUser";
+import { env } from "@/constants/env";
 
 const defaultFormState = {
   email: "",
@@ -60,7 +61,7 @@ export default function SignupPage({ params }: SignupPageProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${env.NEXT_PUBLIC_APP_URL}/auth/callback`,
         },
       });
 

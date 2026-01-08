@@ -10,7 +10,11 @@ import { SectionCard } from "../section-card";
 import { QuickScheduleDialog } from "@/app/(protected)/dashboard/_components/quick-schedule-dialog";
 import type { BaseItem } from "../../types";
 
-export function BrainDumpSection() {
+type BrainDumpSectionProps = {
+  fullHeight?: boolean;
+};
+
+export function BrainDumpSection({ fullHeight }: BrainDumpSectionProps) {
   const { items, add, edit, remove, toggle } = useBrainDump();
   const scheduledIds = useDashboardStore((state) => state.getScheduledSourceIds());
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
@@ -23,7 +27,7 @@ export function BrainDumpSection() {
 
   return (
     <>
-      <SectionCard title="Brain Dump" icon="Brain">
+      <SectionCard title="Brain Dump" icon="Brain" fullHeight={fullHeight}>
         <QuickAddInput placeholder="생각을 바로 적어 보세요..." onAdd={add} />
         {items.length === 0 ? (
           <EmptyState message="아이디어를 자유롭게 적어보세요" />

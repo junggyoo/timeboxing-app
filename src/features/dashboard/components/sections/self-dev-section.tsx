@@ -10,7 +10,11 @@ import { SectionCard } from "../section-card";
 import { QuickScheduleDialog } from "@/app/(protected)/dashboard/_components/quick-schedule-dialog";
 import type { BaseItem } from "../../types";
 
-export function SelfDevSection() {
+type SelfDevSectionProps = {
+	fullHeight?: boolean;
+};
+
+export function SelfDevSection({ fullHeight }: SelfDevSectionProps) {
 	const { items, add, edit, remove, toggle } = useSelfDev();
 	const scheduledIds = useDashboardStore((state) =>
 		state.getScheduledSourceIds()
@@ -35,7 +39,7 @@ export function SelfDevSection() {
 
 	return (
 		<>
-			<SectionCard title="Self-Development" icon="Lightbulb">
+			<SectionCard title="Self-Development" icon="Lightbulb" fullHeight={fullHeight}>
 				<QuickAddInput placeholder="자기 계발 항목 추가" onAdd={handleAdd} />
 				{items.length === 0 ? (
 					<EmptyState message="자기 계발 목표를 추가하세요" />

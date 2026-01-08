@@ -5,7 +5,11 @@ import { useCallback, useEffect, useState } from "react";
 import { useMemo } from "../../hooks/use-dashboard";
 import { SectionCard } from "../section-card";
 
-export function MemoSection() {
+type MemoSectionProps = {
+	fullHeight?: boolean;
+};
+
+export function MemoSection({ fullHeight }: MemoSectionProps) {
 	const { content, update } = useMemo();
 	const [localContent, setLocalContent] = useState(content);
 
@@ -20,7 +24,7 @@ export function MemoSection() {
 	}, [localContent, content, update]);
 
 	return (
-		<SectionCard title="Memo" icon="StickyNote" scrollable={false}>
+		<SectionCard title="Memo" icon="StickyNote" scrollable={false} fullHeight={fullHeight}>
 			<Textarea
 				value={localContent}
 				onChange={(e) => setLocalContent(e.target.value)}
