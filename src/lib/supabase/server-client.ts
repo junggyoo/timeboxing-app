@@ -31,11 +31,17 @@ export const createSupabaseServerClient = async (): Promise<
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            if (typeof cookieStore.set === "function") {
-              cookieStore.set({ name, value, ...options });
-            }
-          });
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              if (typeof cookieStore.set === "function") {
+                cookieStore.set({ name, value, ...options });
+              }
+            });
+          } catch {
+            // setAll은 Server Component에서 호출될 수 있으며,
+            // 이 경우 쿠키 설정이 불가능합니다. 이는 예상된 동작입니다.
+            // 실제 쿠키 설정은 middleware나 Route Handler에서 처리됩니다.
+          }
         },
       },
     }
