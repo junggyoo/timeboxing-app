@@ -1,0 +1,97 @@
+# 메인 대시보드 UI-only 정적 목업 페이지 생성
+
+**Task ID:** T-002
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 8/10
+**Urgency:** 9/10
+**Dependencies:** None
+
+## Description
+
+## 작업 목표
+사용자가 가장 많이 보게 될 메인 대시보드(`/dashboard/today`)의 UI를 데이터 연동 없이 정적(static) 목업으로 구현합니다. 이 작업은 실제 기능 구현에 앞서 전체적인 레이아웃과 컴포넌트 구조를 시각적으로 확립하는 데 목적이 있습니다. `shadcn/ui` 컴포넌트를 적극 활용해주세요.
+
+### 1. 제품 요약 (Product Summary)
+- 시간을 블록 단위로 계획, 실행, 검토하게 해주는 웹 기반 타임박싱 도구입니다.
+- 데스크톱에서 계획을 세우고, 모바일에서 타이머와 알람으로 실행을 돕습니다.
+
+### 2. 대상 사용자 (Target Users)
+- 집중력을 높이고 싶은 직장인
+- 학습 시간을 관리하려는 대학생
+- 프로젝트 단위로 일하는 프리랜서
+
+### 3. 디자인 무드 (Design Mood)
+- **Clean & Modern:** 불필요한 장식 없이 깔끔하고 현대적인 느낌
+- **Focused:** 사용자가 현재 작업에 집중할 수 있도록 방해 요소를 최소화
+- **Data-driven:** 차트와 진행률 표시를 통해 성과를 명확하게 시각화
+
+### 4. 컬러 팔레트 (Color Palette)
+- **배경:** `gray-50`
+- **헤더/사이드바:** `gray-900` (텍스트는 `white`)
+- **타임라인 그리드:** `gray-200`
+- **타임박스 카드:** `primary-light`, 테두리는 `primary`
+- **주요 버튼:** `primary`
+
+### 5. UI 가이드라인 (UI Guidelines)
+- **간격(Spacing):** 4px 그리드 시스템 (e.g., `p-4`, `m-8`)
+- **테두리 곡률(Border Radius):** `rounded-lg` (8px)를 기본으로 사용
+- **그림자(Shadow):** 상호작용 가능한 요소(카드, 버튼)에 `shadow-md` 사용
+
+### 6. 사용자 여정 (User Journey)
+사용자 로그인 → 대시보드(`/dashboard/today`) 진입 → 오늘 날짜의 타임라인 뷰 확인 → 등록된 타임박스 목록 시각적으로 인지
+
+### 7. 공통 컴포넌트 (Common Components)
+- `Header`: 로고, 페이지 제목, 사용자 프로필 아바타
+- `Sidebar`: 대시보드, 리포트, 설정 메뉴 링크
+- `TimeboxCard`: 시간, 제목, 상태를 표시하는 카드
+- `Button`: '+ 새 타임박스' 액션 버튼
+- `Calendar`: 날짜를 선택할 수 있는 미니 캘린더 (사이드바에 위치)
+
+### 8. 사이트맵 (Sitemap)
+이 작업은 다음 경로의 페이지만 구현합니다.
+- `/dashboard/today` (전체 앱 레이아웃 내에 위치)
+
+### 9. 페이지 구현: 대시보드 (`/dashboard/today`)
+- **핵심 목적:** 사용자가 오늘 하루의 시간 계획을 한눈에 파악하고 관리할 수 있도록 한다.
+- **주요 컴포넌트:**
+  - `Header`
+  - `Sidebar`
+  - `TimelineView`: 시간대별로 타임박스를 배치하는 메인 콘텐츠 영역
+  - `QuickAddButton`: 새로운 타임박스를 추가하는 플로팅 액션 버튼 또는 상단 버튼
+- **레이아웃 구조:**
+  - 좌측에 고정된 `Sidebar` (너비: 280px)
+  - 상단에 고정된 `Header` (높이: 64px)
+  - 나머지 공간을 차지하는 `Main Content` 영역
+
+### 10. 레이아웃 컴포넌트: `AppLayout`
+- **적용 경로:** `/dashboard/*`
+- **핵심 컴포넌트:**
+  - `<Header />`
+  - `<Sidebar />`
+  - `<main>`: 페이지의 실제 콘텐츠가 렌더링될 영역
+- **반응형 동작:**
+  - **데스크톱 (≥1280px):** `Sidebar`가 항상 표시됨
+  - **모바일 (<768px):** `Sidebar`는 숨겨지고, `Header`의 햄버거 버튼으로 토글 가능. `Main Content`가 전체 너비를 사용.
+
+### 11. 목업 데이터 예시
+- 타임라인은 오전 8시부터 오후 10시까지 1시간 단위로 표시합니다.
+- 아래와 같은 가짜 타임박스 3개를 `TimeboxCard` 컴포넌트로 렌더링해주세요.
+  1. `10:00 - 11:30`: "주간 보고서 작성"
+  2. `13:00 - 15:00`: "팀 미팅 및 브레인스토밍"
+  3. `16:30 - 17:00`: "이메일 확인 및 회신"
+
+MUST Guidelines:
+- only implement what is written in prompt.
+- tidy first.
+- Implement UI-only mockup only. Use **dummy data** for now.
+- Be sure every routing works.
+-Be sure root route works.
+
+
+  
+
+---
+
+**Created:** 2026-01-08T02:37:27.204Z
+**Updated:** 2026-01-08T02:37:27.204Z

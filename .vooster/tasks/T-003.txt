@@ -1,0 +1,70 @@
+# 대시보드 내 '타임박스 생성' 모달 UI 및 클라이언트 로직 구현
+
+**Task ID:** T-003
+**Status:** BACKLOG
+**Importance:** MUST
+**Complexity:** 8/10
+**Urgency:** 8/10
+**Dependencies:** None
+
+## Description
+
+## 작업 목표
+대시보드 페이지에서 사용자가 새로운 타임박스를 생성할 수 있도록 `shadcn/ui`의 `Dialog` (모달) 컴포넌트를 사용하여 UI를 구현합니다. 이 작업은 API 연동 없이 순수 프론트엔드 로직(상태 관리, 폼 유효성 검사)에 집중합니다.
+
+### 1. 사용자 여정 (User Journey)
+대시보드의 `+ 새 타임박스` 버튼 클릭 → 타임박스 생성 모달 열림 → 제목, 시작 시간, 종료 시간 입력 → `저장` 버튼 클릭 → (성공 시) 입력 데이터 콘솔에 출력 및 모달 닫힘 → (실패 시) 유효성 검사 오류 메시지 표시
+
+### 2. 기능 요구사항 (Functional Requirements)
+
+1.  **모달 트리거:**
+    -   대시보드에 위치한 `Button` 컴포넌트 (`+ 새 타임박스`)를 클릭하면 모달이 열려야 합니다.
+2.  **모달 UI 구성:**
+    -   `DialogTitle`: "새 타임박스 생성"
+    -   `DialogDescription`: "집중할 작업을 계획하세요."
+    -   **Form Fields:**
+        -   `제목 (Title)`: `Input` 컴포넌트, `placeholder="예: 기획서 초안 작성"`
+        -   `시작 시간 (Start Time)`: `Input` 컴포넌트, `type="time"`
+        -   `종료 시간 (End Time)`: `Input` 컴포넌트, `type="time"`
+    -   **Actions:**
+        -   `취소` 버튼 (`variant="outline"`): 클릭 시 모달을 닫습니다.
+        -   `저장` 버튼 (`variant="default"`): 클릭 시 폼 제출 로직을 실행합니다.
+3.  **클라이언트 상태 관리:**
+    -   `useState`를 사용하여 모달의 열림/닫힘 상태를 관리합니다.
+    -   각 폼 필드(제목, 시작 시간, 종료 시간)의 값을 `useState`로 관리합니다.
+4.  **폼 유효성 검사 (Form Validation):**
+    -   `저장` 버튼 클릭 시 다음을 검증합니다:
+        -   `제목`은 비어있을 수 없습니다.
+        -   `시작 시간`과 `종료 시간`은 반드시 입력되어야 합니다.
+        -   `종료 시간`은 `시작 시간`보다 이후여야 합니다.
+    -   유효성 검사에 실패하면, 각 필드 아래에 빨간색 텍스트로 오류 메시지를 표시합니다. (예: "제목을 입력해주세요.")
+5.  **폼 제출 처리:**
+    -   유효성 검사를 통과하면, 폼 데이터를 `{ title, startTime, endTime }` 형태의 객체로 만들어 `console.log()`로 출력합니다.
+    -   데이터 출력 후, 모달을 자동으로 닫습니다.
+    -   **주의:** 실제 데이터베이스에 저장하는 API 호출 로직은 구현하지 않습니다.
+
+### 3. 데이터 흐름 (Data Flow)
+- **UI Event:** 사용자가 `+ 새 타임박스` 버튼 클릭
+- **State Change:** 모달 열림 상태 `true`로 변경
+- **UI Event:** 사용자가 폼 필드에 값 입력
+- **State Change:** 각 필드에 해당하는 state 업데이트
+- **UI Event:** 사용자가 `저장` 버튼 클릭
+- **Client Logic:**
+  -   유효성 검사 함수 실행
+  -   (If valid) `console.log(formData)` 실행
+  -   (If valid) 모달 닫힘 상태 `false`로 변경
+  -   (If invalid) 오류 메시지 state 업데이트
+- **UI Update:** 오류 메시지 렌더링 또는 모달 닫힘
+
+MUST Guidelines:
+- only implement what is written in prompt.
+- tidy first.
+
+
+
+  
+
+---
+
+**Created:** 2026-01-08T02:37:27.204Z
+**Updated:** 2026-01-08T02:37:27.204Z
