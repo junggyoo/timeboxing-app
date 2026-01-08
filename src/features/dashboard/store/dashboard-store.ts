@@ -19,6 +19,16 @@ import {
   SAMPLE_URGENT,
 } from "../constants";
 
+type PlannerState = {
+  selectedDate: string;
+  goal: string;
+};
+
+type PlannerActions = {
+  setSelectedDate: (date: string) => void;
+  setGoal: (goal: string) => void;
+};
+
 type DashboardActions = {
   addItem: (section: ItemSectionKey, title: string, tags?: string[]) => void;
   editItem: (
@@ -36,9 +46,16 @@ type DashboardActions = {
   moveItem: (from: ItemSectionKey, to: ItemSectionKey, id: string) => void;
   addTimeBox: (item: Omit<TimeBoxItem, "id">) => void;
   updateMemo: (content: string) => void;
+  assignToTimeline: (
+    itemId: string,
+    sourceSection: ItemSectionKey,
+    startAt: string,
+    durationMin?: number
+  ) => void;
+  updateTimeBlockDuration: (id: string, durationMin: number) => void;
 };
 
-type DashboardStore = DashboardState & DashboardActions;
+type DashboardStore = DashboardState & PlannerState & DashboardActions & PlannerActions;
 
 const createItem = (title: string, tags?: string[]): BaseItem => ({
   id: crypto.randomUUID(),
@@ -55,6 +72,14 @@ const reorder = <T>(list: T[], fromIndex: number, toIndex: number): T[] => {
   return result;
 };
 
+const calculateEndTime = (startAt: string, durationMin: number): string => {
+  const [hours, minutes] = startAt.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + durationMin;
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
+  return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
+};
+
 export const useDashboardStore = create<DashboardStore>((set) => ({
   brainDump: SAMPLE_BRAIN_DUMP,
   priorities: SAMPLE_PRIORITIES,
@@ -63,6 +88,8 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
   notToDo: SAMPLE_NOT_TO_DO,
   timeBox: SAMPLE_TIMEBOX,
   memo: SAMPLE_MEMO,
+  selectedDate: new Date().toISOString().split("T")[0],
+  goal: "",
 
   addItem: (section, title, tags) =>
     set((state) => ({
@@ -160,4 +187,42 @@ export const useDashboardStore = create<DashboardStore>((set) => ({
         ),
       };
     }),
+
+  assignToTimeline: (itemId, sourceSection, startAt, durationMin = 30) =>
+    set((state) => {
+      const sourceItems = state[sourceSection] as BaseItem[];
+      const item = sourceItems.find((i) => i.id === itemId);
+
+      if (!item) return state;
+
+      const newTimeBox: TimeBoxItem = {
+        id: crypto.randomUUID(),
+        title: item.title,
+        startAt,
+        endAt: calculateEndTime(startAt, durationMin),
+        durationMin,
+        status: "scheduled",
+      };
+
+      return {
+        [sourceSection]: sourceItems.filter((i) => i.id !== itemId),
+        timeBox: [...state.timeBox, newTimeBox],
+      };
+    }),
+
+  updateTimeBlockDuration: (id, durationMin) =>
+    set((state) => ({
+      timeBox: state.timeBox.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              durationMin,
+              endAt: calculateEndTime(item.startAt, durationMin),
+            }
+          : item
+      ),
+    })),
+
+  setSelectedDate: (date) => set({ selectedDate: date }),
+  setGoal: (goal) => set({ goal }),
 }));

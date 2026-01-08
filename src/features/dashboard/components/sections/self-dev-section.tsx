@@ -1,8 +1,8 @@
 "use client";
 
 import { useSelfDev } from "../../hooks/use-dashboard";
+import { DraggableItem } from "../draggable-item";
 import { EmptyState } from "../empty-state";
-import { ItemRow } from "../item-row";
 import { QuickAddInput } from "../quick-add-input";
 import { SectionCard } from "../section-card";
 
@@ -30,9 +30,10 @@ export function SelfDevSection() {
       ) : (
         <ul role="list" className="space-y-1">
           {items.map((item) => (
-            <ItemRow
+            <DraggableItem
               key={item.id}
               item={item}
+              section="selfDev"
               onToggle={() => toggle(item.id)}
               onEdit={(title) => edit(item.id, title)}
               onRemove={() => remove(item.id)}

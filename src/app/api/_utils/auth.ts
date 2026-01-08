@@ -1,7 +1,6 @@
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 import { env } from "@/constants/env";
-import type { Database } from "@/lib/supabase/types";
 
 class HttpError extends Error {
   constructor(
@@ -16,7 +15,7 @@ class HttpError extends Error {
 export async function getSessionOrThrow() {
   const cookieStore = await cookies();
 
-  const supabase = createServerClient<Database>(
+  const supabase = createServerClient(
     env.NEXT_PUBLIC_SUPABASE_URL,
     env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {

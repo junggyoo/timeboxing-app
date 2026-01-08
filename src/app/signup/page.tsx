@@ -111,7 +111,8 @@ export default function SignupPage({ params }: SignupPageProps) {
 
           if (!existingProfile) {
             const nickname = result.data.user.email?.split("@")[0] || "User";
-            await supabase.from("profiles").insert({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            await (supabase.from("profiles") as any).insert({
               id: result.data.user.id,
               email: result.data.user.email!,
               nickname,

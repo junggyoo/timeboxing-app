@@ -32,6 +32,7 @@ type SectionCardProps = {
   headerAction?: ReactNode;
   className?: string;
   scrollable?: boolean;
+  variant?: "default" | "warning";
 };
 
 export function SectionCard({
@@ -41,11 +42,18 @@ export function SectionCard({
   headerAction,
   className,
   scrollable = true,
+  variant = "default",
 }: SectionCardProps) {
   const IconComponent = ICON_MAP[icon] ?? Brain;
 
   return (
-    <Card className={cn("flex h-full flex-col", className)}>
+    <Card
+      className={cn(
+        "flex h-full flex-col",
+        variant === "warning" && "border-destructive/30 bg-destructive/5",
+        className
+      )}
+    >
       <div className="flex items-center justify-between border-b px-4 py-3">
         <div className="flex items-center gap-2">
           <IconComponent className="h-4 w-4 text-muted-foreground" />

@@ -1,25 +1,28 @@
 "use client";
 
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
-import { DashboardGrid } from "./dashboard-grid";
-import { MobileSectionList } from "./mobile-section-list";
+import { DndContextProvider } from "./dnd-context-provider";
+import { LeftPanel } from "./left-panel";
+import { MobileTabs } from "./mobile-tabs";
+import { PlannerHeader } from "./planner-header";
+import { RightPanel } from "./right-panel";
 
 export function DashboardView() {
-  const today = new Date();
-  const formattedDate = format(today, "yyyy년 M월 d일 EEEE", { locale: ko });
-
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">대시보드</h1>
-          <p className="text-sm text-muted-foreground">{formattedDate}</p>
+    <DndContextProvider>
+      <div className="space-y-4">
+        <PlannerHeader />
+
+        {/* Desktop: Two-Column Split */}
+        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6">
+          <LeftPanel />
+          <RightPanel />
+        </div>
+
+        {/* Mobile/Tablet: Tabbed Interface */}
+        <div className="lg:hidden">
+          <MobileTabs />
         </div>
       </div>
-
-      <DashboardGrid />
-      <MobileSectionList />
-    </div>
+    </DndContextProvider>
   );
 }

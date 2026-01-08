@@ -51,3 +51,17 @@ export type SectionConfig = {
   icon: string;
   gridSpan: number;
 };
+
+export type DragItemData = {
+  id: string;
+  title: string;
+  sourceSection: ItemSectionKey;
+};
+
+export type DroppableType = "section" | "timeline";
+
+export type TimeSlot = {
+  time: string;
+  hour: number;
+  minute: number;
+};

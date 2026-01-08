@@ -1,8 +1,8 @@
 "use client";
 
 import { useUrgent } from "../../hooks/use-dashboard";
+import { DraggableItem } from "../draggable-item";
 import { EmptyState } from "../empty-state";
-import { ItemRow } from "../item-row";
 import { QuickAddInput } from "../quick-add-input";
 import { SectionCard } from "../section-card";
 
@@ -17,9 +17,10 @@ export function UrgentWorkSection() {
       ) : (
         <ul role="list" className="space-y-1">
           {items.map((item) => (
-            <ItemRow
+            <DraggableItem
               key={item.id}
               item={item}
+              section="urgent"
               onToggle={() => toggle(item.id)}
               onEdit={(title) => edit(item.id, title)}
               onRemove={() => remove(item.id)}
