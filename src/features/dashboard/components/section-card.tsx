@@ -1,0 +1,65 @@
+"use client";
+
+import { Card } from "@/components/ui/card";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
+import {
+  AlertCircle,
+  Ban,
+  Brain,
+  Clock,
+  Lightbulb,
+  LucideIcon,
+  StickyNote,
+  Target,
+} from "lucide-react";
+import type { ReactNode } from "react";
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Brain,
+  Target,
+  AlertCircle,
+  Lightbulb,
+  Ban,
+  Clock,
+  StickyNote,
+};
+
+type SectionCardProps = {
+  title: string;
+  icon: string;
+  children: ReactNode;
+  headerAction?: ReactNode;
+  className?: string;
+  scrollable?: boolean;
+};
+
+export function SectionCard({
+  title,
+  icon,
+  children,
+  headerAction,
+  className,
+  scrollable = true,
+}: SectionCardProps) {
+  const IconComponent = ICON_MAP[icon] ?? Brain;
+
+  return (
+    <Card className={cn("flex h-full flex-col", className)}>
+      <div className="flex items-center justify-between border-b px-4 py-3">
+        <div className="flex items-center gap-2">
+          <IconComponent className="h-4 w-4 text-muted-foreground" />
+          <h3 className="text-sm font-semibold">{title}</h3>
+        </div>
+        {headerAction}
+      </div>
+      {scrollable ? (
+        <ScrollArea className="flex-1 p-4">
+          <div className="max-h-[320px]">{children}</div>
+        </ScrollArea>
+      ) : (
+        <div className="flex-1 p-4">{children}</div>
+      )}
+    </Card>
+  );
+}
