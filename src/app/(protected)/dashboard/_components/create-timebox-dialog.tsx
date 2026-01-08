@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 
 type CreateTimeboxDialogProps = {
   open: boolean;
@@ -32,6 +33,7 @@ export function CreateTimeboxDialog({
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [errors, setErrors] = useState<FormErrors>({});
+  const addTimeBox = useDashboardStore((state) => state.addTimeBox);
 
   const handleReset = () => {
     setTitle("");
@@ -75,13 +77,17 @@ export function CreateTimeboxDialog({
       return;
     }
 
-    const formData = {
-      title: title.trim(),
-      startTime,
-      endTime,
-    };
+    const [startH, startM] = startTime.split(":").map(Number);
+    const [endH, endM] = endTime.split(":").map(Number);
+    const durationMin = (endH * 60 + endM) - (startH * 60 + startM);
 
-    console.log("타임박스 생성 데이터:", formData);
+    addTimeBox({
+      title: title.trim(),
+      startAt: startTime,
+      endAt: endTime,
+      durationMin,
+      status: "scheduled",
+    });
 
     handleClose();
   };

@@ -4,7 +4,8 @@ import { useDraggable } from "@dnd-kit/core";
 import { cn } from "@/lib/utils";
 import type { BaseItem, ItemSectionKey } from "../types";
 import { ItemRow } from "./item-row";
-import { GripVertical } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { GripVertical, CalendarPlus } from "lucide-react";
 
 type DraggableItemProps = {
   item: BaseItem;
@@ -18,6 +19,7 @@ type DraggableItemProps = {
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
+  onSchedule?: () => void;
 };
 
 export function DraggableItem({
@@ -32,6 +34,7 @@ export function DraggableItem({
   onMoveDown,
   isFirst,
   isLast,
+  onSchedule,
 }: DraggableItemProps) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: item.id,
@@ -72,6 +75,17 @@ export function DraggableItem({
           isLast={isLast}
         />
       </div>
+      {onSchedule && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+          onClick={onSchedule}
+          aria-label="일정에 추가"
+        >
+          <CalendarPlus className="h-4 w-4 text-muted-foreground" />
+        </Button>
+      )}
     </div>
   );
 }

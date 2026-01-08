@@ -62,11 +62,11 @@ export function SectionCard({
         {headerAction}
       </div>
       {scrollable ? (
-        <ScrollArea className="flex-1 p-4">
-          <div className="max-h-[320px]">{children}</div>
+        <ScrollArea className="flex-1 p-2 sm:p-4">
+          <div className="max-h-[240px] sm:max-h-[320px]">{children}</div>
         </ScrollArea>
       ) : (
-        <div className="flex-1 p-4">{children}</div>
+        <div className="flex-1 p-2 sm:p-4">{children}</div>
       )}
     </Card>
   );

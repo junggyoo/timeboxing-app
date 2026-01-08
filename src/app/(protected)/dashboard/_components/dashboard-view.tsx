@@ -9,11 +9,11 @@ import { RightPanel } from "./right-panel";
 export function DashboardView() {
   return (
     <DndContextProvider>
-      <div className="space-y-4">
+      <div className="space-y-6 p-4 lg:p-6">
         <PlannerHeader />
 
         {/* Desktop: Two-Column Split */}
-        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6">
+        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-8">
           <LeftPanel />
           <RightPanel />
         </div>

@@ -10,7 +10,7 @@ import {
 
 export function CategoryGrid() {
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <DroppableSection id="priorities">
         <PrioritiesSection />
       </DroppableSection>

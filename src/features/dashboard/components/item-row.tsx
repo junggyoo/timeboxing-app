@@ -47,7 +47,7 @@ export function ItemRow({
   isLast = false,
 }: ItemRowProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const rowRef = useRef<HTMLLIElement>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
 
   const isInverted = variant === "inverted";
   const isCompleted = isInverted ? !item.isDone : item.isDone;
@@ -77,9 +77,8 @@ export function ItemRow({
   };
 
   return (
-    <li
+    <div
       ref={rowRef}
-      role="listitem"
       className={cn(
         "group flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-muted/50",
         isCompleted && "opacity-60"
@@ -195,6 +194,6 @@ export function ItemRow({
           <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
-    </li>
+    </div>
   );
 }

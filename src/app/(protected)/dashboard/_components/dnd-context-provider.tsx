@@ -16,13 +16,18 @@ import { ReactNode, useState } from "react";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import type { DragItemData, ItemSectionKey } from "@/features/dashboard/types";
 import { useShallow } from "zustand/react/shallow";
+import { GripVertical } from "lucide-react";
 
 type DndContextProviderProps = {
   children: ReactNode;
 };
 
+type ActiveItemState = DragItemData & {
+  width?: number;
+};
+
 export function DndContextProvider({ children }: DndContextProviderProps) {
-  const [activeItem, setActiveItem] = useState<DragItemData | null>(null);
+  const [activeItem, setActiveItem] = useState<ActiveItemState | null>(null);
 
   const { moveItem, assignToTimeline } = useDashboardStore(
     useShallow((state) => ({
@@ -45,7 +50,10 @@ export function DndContextProvider({ children }: DndContextProviderProps) {
   const handleDragStart = (event: DragStartEvent) => {
     const data = event.active.data.current as DragItemData | undefined;
     if (data) {
-      setActiveItem(data);
+      // event.active.rect.current.translated를 통해 드래그 요소 정보 접근
+      const rect = event.active.rect.current.translated;
+      const width = rect ? rect.width : undefined;
+      setActiveItem({ ...data, width });
     }
   };
 
@@ -96,10 +104,14 @@ export function DndContextProvider({ children }: DndContextProviderProps) {
       onDragEnd={handleDragEnd}
     >
       {children}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeItem && (
-          <div className="rounded-md border bg-card px-3 py-2 shadow-lg">
-            <p className="text-sm font-medium">{activeItem.title}</p>
+          <div
+            className="flex items-center gap-2 rounded-md border bg-card px-3 py-2 shadow-lg"
+            style={{ width: activeItem.width, minWidth: 200 }}
+          >
+            <GripVertical className="h-4 w-4 shrink-0 text-muted-foreground" />
+            <p className="truncate text-sm font-medium">{activeItem.title}</p>
           </div>
         )}
       </DragOverlay>
