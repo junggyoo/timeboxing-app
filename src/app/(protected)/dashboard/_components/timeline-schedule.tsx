@@ -13,19 +13,26 @@ import type { TimeBoxItem } from "@/features/dashboard/types";
 import { Clock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useShallow } from "zustand/react/shallow";
 import { TaskSelectorSheet } from "./task-selector-sheet";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const generateTimeSlots = (): string[] => {
+const HOURS_TO_DISPLAY = 18; // 표시할 시간 범위 (18시간)
+const SLOT_HEIGHT = 48; // 30분당 높이 (px)
+
+const generateTimeSlots = (startHour: number): string[] => {
   const slots: string[] = [];
-  for (let h = 0; h < 24; h++) {
+  for (let i = 0; i < HOURS_TO_DISPLAY; i++) {
+    const h = (startHour + i) % 24;
     slots.push(`${h.toString().padStart(2, "0")}:00`);
     slots.push(`${h.toString().padStart(2, "0")}:30`);
   }
   return slots;
 };
-
-const TIME_SLOTS = generateTimeSlots();
-
-const SLOT_HEIGHT = 48; // 30분당 높이 (px)
 
 type TimeSlotProps = {
   time: string;
@@ -140,18 +147,21 @@ function TimeSlot({
   );
 }
 
-// startAt 시간을 기반으로 top 위치 계산
-const calculateTopPosition = (startAt: string): number => {
+// startAt 시간을 기반으로 top 위치 계산 (동적 시작 시간 기준)
+const calculateTopPosition = (startAt: string, startHour: number): number => {
   const [hours, minutes] = startAt.split(":").map(Number);
-  const slotIndex = hours * 2 + (minutes >= 30 ? 1 : 0);
+  // startHour 기준으로 상대적 위치 계산
+  const hoursFromStart = (hours - startHour + 24) % 24;
+  const slotIndex = hoursFromStart * 2 + (minutes >= 30 ? 1 : 0);
   return slotIndex * SLOT_HEIGHT;
 };
 
 type TimeBlockProps = {
   item: TimeBoxItem;
+  startHour: number;
 };
 
-function TimeBlock({ item }: TimeBlockProps) {
+function TimeBlock({ item, startHour }: TimeBlockProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
   const [isResizing, setIsResizing] = useState(false);
@@ -166,8 +176,8 @@ function TimeBlock({ item }: TimeBlockProps) {
 
   // duration 기반 동적 높이 계산
   const height = Math.max(SLOT_HEIGHT, (item.durationMin / 30) * SLOT_HEIGHT);
-  // startAt 기반 top 위치 계산
-  const top = calculateTopPosition(item.startAt);
+  // startAt 기반 top 위치 계산 (동적 시작 시간 기준)
+  const top = calculateTopPosition(item.startAt, startHour);
 
   const handleSave = useCallback(() => {
     if (editTitle.trim() && editTitle.trim() !== item.title) {
@@ -314,6 +324,23 @@ export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [creatingSlot, setCreatingSlot] = useState<string | null>(null);
+  const [startHour, setStartHour] = useState(6); // 기본값: 06:00
+
+  // 동적 시간 슬롯 생성
+  const timeSlots = generateTimeSlots(startHour);
+
+  // 보이는 시간 범위 내의 아이템만 필터링
+  const visibleItems = items.filter((item) => {
+    const [hours] = item.startAt.split(":").map(Number);
+    const endHour = (startHour + HOURS_TO_DISPLAY) % 24;
+
+    // 자정을 넘어가는 경우 처리 (예: 20:00 시작 → 14:00 종료)
+    if (startHour < endHour) {
+      return hours >= startHour && hours < endHour;
+    } else {
+      return hours >= startHour || hours < endHour;
+    }
+  });
 
   const handleSlotTap = (time: string) => {
     setSelectedSlot(time);
@@ -354,14 +381,32 @@ export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
             <Clock className="h-4 w-4 text-muted-foreground" />
             <h3 className="text-sm font-semibold">Time Box</h3>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {items.length}개 일정
-          </Badge>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Start at:</span>
+            <Select
+              value={startHour.toString()}
+              onValueChange={(v) => setStartHour(Number(v))}
+            >
+              <SelectTrigger className="h-7 w-20 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 13 }, (_, i) => (
+                  <SelectItem key={i} value={i.toString()}>
+                    {`${i.toString().padStart(2, "0")}:00`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Badge variant="outline" className="text-xs">
+              {items.length}개 일정
+            </Badge>
+          </div>
         </div>
         <ScrollArea className="flex-1">
           <div className="relative p-2">
             {/* 배경: 시간 슬롯 그리드 (드롭 영역) */}
-            {TIME_SLOTS.map((time) => (
+            {timeSlots.map((time) => (
               <TimeSlot
                 key={time}
                 time={time}
@@ -375,8 +420,8 @@ export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
 
             {/* 오버레이: 타임박스 아이템들 (absolute positioning) */}
             <div className="pointer-events-none absolute inset-0 left-16 right-2 top-2">
-              {items.map((item) => (
-                <TimeBlock key={item.id} item={item} />
+              {visibleItems.map((item) => (
+                <TimeBlock key={item.id} item={item} startHour={startHour} />
               ))}
             </div>
           </div>
