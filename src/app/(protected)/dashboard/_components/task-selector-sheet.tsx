@@ -19,6 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Input } from "@/components/ui/input";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import {
   Brain,
@@ -28,6 +29,7 @@ import {
   Zap,
   Ban,
   AlertTriangle,
+  Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { BaseItem, ItemSectionKey } from "@/features/dashboard/types";
@@ -321,12 +323,16 @@ export function TaskSelectorSheet({
   const [pendingNotToDoItem, setPendingNotToDoItem] = useState<BaseItem | null>(
     null
   );
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [newTaskTitle, setNewTaskTitle] = useState("");
 
   // Reset state when sheet closes
   useEffect(() => {
     if (!open) {
       setSelectedFilter("all");
       setHideScheduled(false);
+      setIsCreatingNew(false);
+      setNewTaskTitle("");
     }
   }, [open]);
 
@@ -338,6 +344,7 @@ export function TaskSelectorSheet({
     selfDev,
     notToDo,
     assignToTimeline,
+    addTimeBox,
     getScheduledSourceIds,
   } = useDashboardStore(
     useShallow((state) => ({
@@ -347,6 +354,7 @@ export function TaskSelectorSheet({
       selfDev: state.selfDev,
       notToDo: state.notToDo,
       assignToTimeline: state.assignToTimeline,
+      addTimeBox: state.addTimeBox,
       getScheduledSourceIds: state.getScheduledSourceIds,
     }))
   );
@@ -426,6 +434,46 @@ export function TaskSelectorSheet({
     }
   };
 
+  // Calculate end time from start time and duration
+  const calculateEndTime = (startAt: string, durationMin: number): string => {
+    const [hours, minutes] = startAt.split(":").map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMin;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
+  };
+
+  // Handle new task creation
+  const handleCreateNewTask = () => {
+    if (!newTaskTitle.trim()) return;
+
+    addTimeBox({
+      title: newTaskTitle.trim(),
+      startAt: targetTime,
+      endAt: calculateEndTime(targetTime, 30),
+      durationMin: 30,
+      status: "scheduled",
+    });
+
+    setNewTaskTitle("");
+    setIsCreatingNew(false);
+    onOpenChange(false);
+  };
+
+  // Handle keyboard events for new task input
+  const handleNewTaskKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing) return;
+
+    if (e.key === "Enter" && newTaskTitle.trim()) {
+      e.preventDefault();
+      handleCreateNewTask();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setNewTaskTitle("");
+      setIsCreatingNew(false);
+    }
+  };
+
   // Sections to render based on filter
   const sectionsToRender =
     selectedFilter === "all"
@@ -440,75 +488,127 @@ export function TaskSelectorSheet({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl px-0">
           <SheetHeader className="px-6 pb-4 border-b">
-            <SheetTitle>Select Task</SheetTitle>
+            <SheetTitle>
+              {isCreatingNew ? "Create New Task" : "Select Task"}
+            </SheetTitle>
             <SheetDescription>
-              Select a task to schedule at {targetTime}
+              {isCreatingNew
+                ? `Create a new task for ${targetTime}`
+                : `Select a task to schedule at ${targetTime}`}
             </SheetDescription>
           </SheetHeader>
 
-          <FilterChipsRow
-            selectedFilter={selectedFilter}
-            onFilterChange={setSelectedFilter}
-            counts={counts}
-          />
+          {isCreatingNew ? (
+            /* Create New Task Form */
+            <div className="px-6 py-6 space-y-4">
+              <Input
+                autoFocus
+                placeholder="Task title..."
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                onKeyDown={handleNewTaskKeyDown}
+                className="h-12 text-base"
+              />
+              <div className="flex gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setNewTaskTitle("");
+                    setIsCreatingNew(false);
+                  }}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleCreateNewTask}
+                  disabled={!newTaskTitle.trim()}
+                  className="flex-1"
+                >
+                  Add to {targetTime}
+                </Button>
+              </div>
+            </div>
+          ) : (
+            /* Task List View */
+            <>
+              {/* Create New Task Button */}
+              <div className="px-6 py-3 border-b">
+                <Button
+                  variant="outline"
+                  className="w-full justify-start gap-2 h-11"
+                  onClick={() => setIsCreatingNew(true)}
+                >
+                  <Plus className="h-4 w-4" />
+                  Create New Task
+                </Button>
+              </div>
 
-          <HideScheduledToggle
-            checked={hideScheduled}
-            onCheckedChange={setHideScheduled}
-          />
+              <FilterChipsRow
+                selectedFilter={selectedFilter}
+                onFilterChange={setSelectedFilter}
+                counts={counts}
+              />
 
-          <ScrollArea className="h-[calc(70vh-180px)]">
-            <div className="space-y-4 py-4">
-              {counts.all === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <p className="text-sm text-muted-foreground">
-                    No tasks available.
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Add tasks in the Planning tab.
-                  </p>
-                </div>
-              ) : showSectionHeaders ? (
-                // All mode: show grouped sections with headers
-                sectionsToRender.map((config) => (
-                  <SectionGroup
-                    key={config.key}
-                    config={config}
-                    items={processedSectionData[config.key]}
-                    scheduledIds={scheduledIds}
-                    onSelectTask={handleSelectTask}
-                  />
-                ))
-              ) : (
-                // Single category mode: show items without section header
-                <div className="space-y-1.5 px-6">
-                  {processedSectionData[selectedFilter as ItemSectionKey].map(
-                    (item) => (
-                      <TaskItem
-                        key={item.id}
-                        item={item}
-                        isScheduled={scheduledIds.has(item.id)}
-                        onSelect={() =>
-                          handleSelectTask(
-                            item.id,
-                            selectedFilter as ItemSectionKey
-                          )
-                        }
-                      />
-                    )
-                  )}
-                  {processedSectionData[selectedFilter as ItemSectionKey]
-                    .length === 0 && (
+              <HideScheduledToggle
+                checked={hideScheduled}
+                onCheckedChange={setHideScheduled}
+              />
+
+              <ScrollArea className="h-[calc(70vh-240px)]">
+                <div className="space-y-4 py-4">
+                  {counts.all === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <p className="text-sm text-muted-foreground">
-                        No tasks in this category.
+                        No tasks available.
                       </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Add tasks in the Planning tab or create a new one above.
+                      </p>
+                    </div>
+                  ) : showSectionHeaders ? (
+                    // All mode: show grouped sections with headers
+                    sectionsToRender.map((config) => (
+                      <SectionGroup
+                        key={config.key}
+                        config={config}
+                        items={processedSectionData[config.key]}
+                        scheduledIds={scheduledIds}
+                        onSelectTask={handleSelectTask}
+                      />
+                    ))
+                  ) : (
+                    // Single category mode: show items without section header
+                    <div className="space-y-1.5 px-6">
+                      {processedSectionData[selectedFilter as ItemSectionKey].map(
+                        (item) => (
+                          <TaskItem
+                            key={item.id}
+                            item={item}
+                            isScheduled={scheduledIds.has(item.id)}
+                            onSelect={() =>
+                              handleSelectTask(
+                                item.id,
+                                selectedFilter as ItemSectionKey
+                              )
+                            }
+                          />
+                        )
+                      )}
+                      {processedSectionData[selectedFilter as ItemSectionKey]
+                        .length === 0 && (
+                        <div className="flex flex-col items-center justify-center py-12 text-center">
+                          <p className="text-sm text-muted-foreground">
+                            No tasks in this category.
+                          </p>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          </ScrollArea>
+              </ScrollArea>
+            </>
+          )}
         </SheetContent>
       </Sheet>
 

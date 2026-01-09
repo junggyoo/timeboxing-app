@@ -30,9 +30,21 @@ const SLOT_HEIGHT = 48; // 30분당 높이 (px)
 type TimeSlotProps = {
   time: string;
   onTap?: (time: string) => void;
+  isCreating?: boolean;
+  onStartCreate?: (time: string) => void;
+  onCreate?: (time: string, title: string) => void;
+  onCancelCreate?: () => void;
 };
 
-function TimeSlot({ time, onTap }: TimeSlotProps) {
+function TimeSlot({
+  time,
+  onTap,
+  isCreating,
+  onStartCreate,
+  onCreate,
+  onCancelCreate,
+}: TimeSlotProps) {
+  const [title, setTitle] = useState("");
   const { setNodeRef, isOver } = useDroppable({
     id: `timeline-${time}`,
   });
@@ -40,10 +52,37 @@ function TimeSlot({ time, onTap }: TimeSlotProps) {
   const isHour = time.endsWith(":00");
 
   const handleClick = () => {
-    // Only trigger on touch devices (coarse pointer)
-    if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) {
-      onTap?.(time);
+    if (typeof window === "undefined") return;
+
+    // Desktop (fine pointer): start inline creation
+    if (window.matchMedia("(pointer: fine)").matches) {
+      onStartCreate?.(time);
+      return;
     }
+    // Mobile (coarse pointer): open bottom sheet
+    onTap?.(time);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.nativeEvent.isComposing) return;
+
+    if (e.key === "Enter" && title.trim()) {
+      e.preventDefault();
+      onCreate?.(time, title.trim());
+      setTitle("");
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setTitle("");
+      onCancelCreate?.();
+    }
+  };
+
+  const handleBlur = () => {
+    if (title.trim()) {
+      onCreate?.(time, title.trim());
+    }
+    setTitle("");
+    onCancelCreate?.();
   };
 
   return (
@@ -53,9 +92,10 @@ function TimeSlot({ time, onTap }: TimeSlotProps) {
       className={cn(
         "group relative flex border-b transition-colors cursor-pointer",
         isOver && "bg-primary/10",
+        isCreating && "bg-primary/5",
         isHour ? "border-border" : "border-border/30"
       )}
-      onClick={handleClick}
+      onClick={!isCreating ? handleClick : undefined}
     >
       <div
         className={cn(
@@ -66,15 +106,34 @@ function TimeSlot({ time, onTap }: TimeSlotProps) {
         {time}
       </div>
       <div className="relative flex-1">
-        {isOver ? (
+        {isCreating ? (
+          <div className="flex h-full items-center px-2">
+            <Input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleBlur}
+              placeholder="Task name..."
+              className="h-7 text-sm"
+              autoFocus
+            />
+          </div>
+        ) : isOver ? (
           <div className="flex h-full items-center pl-2 text-xs text-muted-foreground">
             여기에 드롭하세요
           </div>
         ) : (
-          /* Mobile tap hint - only visible on touch devices */
-          <div className="lg:hidden flex h-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-            <Plus className="h-4 w-4 text-muted-foreground/50" />
-          </div>
+          <>
+            {/* Desktop hover hint */}
+            <div className="hidden lg:flex h-full items-center pl-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Plus className="h-4 w-4 text-muted-foreground/50 mr-1" />
+              <span className="text-xs text-muted-foreground/50">Click to add</span>
+            </div>
+            {/* Mobile tap hint */}
+            <div className="lg:hidden flex h-full items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+              <Plus className="h-4 w-4 text-muted-foreground/50" />
+            </div>
+          </>
         )}
       </div>
     </div>
@@ -236,10 +295,25 @@ type TimelineScheduleProps = {
   fullHeight?: boolean;
 };
 
+// Calculate end time from start time and duration
+const calculateEndTime = (startAt: string, durationMin: number): string => {
+  const [hours, minutes] = startAt.split(":").map(Number);
+  const totalMinutes = hours * 60 + minutes + durationMin;
+  const endHours = Math.floor(totalMinutes / 60) % 24;
+  const endMinutes = totalMinutes % 60;
+  return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
+};
+
 export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
-  const items = useDashboardStore(useShallow((state) => state.timeBox));
+  const { items, addTimeBox } = useDashboardStore(
+    useShallow((state) => ({
+      items: state.timeBox,
+      addTimeBox: state.addTimeBox,
+    }))
+  );
   const [sheetOpen, setSheetOpen] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<string>("");
+  const [creatingSlot, setCreatingSlot] = useState<string | null>(null);
 
   const handleSlotTap = (time: string) => {
     setSelectedSlot(time);
@@ -251,6 +325,25 @@ export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
     if (!open) {
       setSelectedSlot("");
     }
+  };
+
+  const handleStartCreate = (time: string) => {
+    setCreatingSlot(time);
+  };
+
+  const handleCreate = (time: string, title: string) => {
+    addTimeBox({
+      title,
+      startAt: time,
+      endAt: calculateEndTime(time, 30),
+      durationMin: 30,
+      status: "scheduled",
+    });
+    setCreatingSlot(null);
+  };
+
+  const handleCancelCreate = () => {
+    setCreatingSlot(null);
   };
 
   return (
@@ -269,7 +362,15 @@ export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
           <div className="relative p-2">
             {/* 배경: 시간 슬롯 그리드 (드롭 영역) */}
             {TIME_SLOTS.map((time) => (
-              <TimeSlot key={time} time={time} onTap={handleSlotTap} />
+              <TimeSlot
+                key={time}
+                time={time}
+                onTap={handleSlotTap}
+                isCreating={creatingSlot === time}
+                onStartCreate={handleStartCreate}
+                onCreate={handleCreate}
+                onCancelCreate={handleCancelCreate}
+              />
             ))}
 
             {/* 오버레이: 타임박스 아이템들 (absolute positioning) */}
