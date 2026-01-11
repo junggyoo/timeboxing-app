@@ -29,11 +29,13 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
   const [createTitle, setCreateTitle] = useState("");
 
   // Droppable for drag-and-drop from other panels
+  const displayHour = hour >= 24 ? hour - 24 : hour;
   const { setNodeRef, isOver } = useDroppable({
-    id: `timeline-hour-${hour.toString().padStart(2, "0")}`,
+    id: `timeline-hour-${displayHour.toString().padStart(2, "0")}`,
   });
 
-  const hourLabel = `${hour.toString().padStart(2, "0")}:00`;
+  const prefix = hour >= 24 ? "(+1) " : "";
+  const hourLabel = `${prefix}${displayHour.toString().padStart(2, "0")}:00`;
 
   // Handle click on empty space to create task
   const handleRowClick = useCallback(

@@ -6,8 +6,10 @@ export const HOUR_HEIGHT = 64;
 /** Snap granularity in minutes (10-minute intervals) */
 export const MINUTE_GRID = 10;
 
-/** Number of hours to display in the timeline */
-export const HOURS_TO_DISPLAY = 18;
+/** Calculate hours to display based on start hour (until 24:00) */
+export function getHoursToDisplay(startHour: number): number {
+  return 24 - startHour;
+}
 
 /** Minimum task duration in minutes */
 export const MIN_DURATION = 10;

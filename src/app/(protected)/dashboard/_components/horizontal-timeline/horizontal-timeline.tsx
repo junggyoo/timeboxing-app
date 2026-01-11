@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { Clock } from "lucide-react";
+import { Clock, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -16,7 +17,7 @@ import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import { useShallow } from "zustand/react/shallow";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 import { HourRow } from "./hour-row";
-import { HOURS_TO_DISPLAY, MIN_DURATION } from "./constants";
+import { MIN_DURATION } from "./constants";
 import { calculateEndTime, getTaskHourSpan } from "./use-block-position";
 
 /**
@@ -72,6 +73,8 @@ type HorizontalTimelineProps = {
   fullHeight?: boolean;
 };
 
+const MAX_END_HOUR = 30; // 최대 종료 시간 (다음 날 06:00까지)
+
 /**
  * Horizontal timeline layout for desktop.
  * Displays hours as rows with tasks positioned horizontally within each hour.
@@ -85,20 +88,34 @@ export function HorizontalTimeline({ fullHeight }: HorizontalTimelineProps) {
   );
 
   const [startHour, setStartHour] = useState(6);
+  const [endHour, setEndHour] = useState(24); // 기본값: 24:00 (자정)
+
+  // Calculate hours to display dynamically
+  const hoursToDisplay = endHour - startHour;
+
+  // 1시간 추가 가능 여부
+  const canExtend = endHour < MAX_END_HOUR;
+
+  // 1시간 추가 핸들러
+  const handleExtendHour = useCallback(() => {
+    if (canExtend) {
+      setEndHour((prev) => prev + 1);
+    }
+  }, [canExtend]);
 
   // Generate hour list for display
   const hours = useMemo(() => {
-    return Array.from({ length: HOURS_TO_DISPLAY }, (_, i) => (startHour + i) % 24);
-  }, [startHour]);
+    return Array.from({ length: hoursToDisplay }, (_, i) => startHour + i);
+  }, [startHour, hoursToDisplay]);
 
   // Filter visible items and group by hour
   const visibleItems = useMemo(() => {
-    return items.filter((item) => isItemVisible(item, startHour, HOURS_TO_DISPLAY));
-  }, [items, startHour]);
+    return items.filter((item) => isItemVisible(item, startHour, hoursToDisplay));
+  }, [items, startHour, hoursToDisplay]);
 
   const itemsByHour = useMemo(() => {
-    return groupItemsByHour(visibleItems, startHour, HOURS_TO_DISPLAY);
-  }, [visibleItems, startHour]);
+    return groupItemsByHour(visibleItems, startHour, hoursToDisplay);
+  }, [visibleItems, startHour, hoursToDisplay]);
 
   // Handle task creation from inline input
   const handleCreateTask = useCallback(
@@ -152,10 +169,23 @@ export function HorizontalTimeline({ fullHeight }: HorizontalTimelineProps) {
             <HourRow
               key={hour}
               hour={hour}
-              items={itemsByHour.get(hour) || []}
+              items={itemsByHour.get(hour % 24) || []}
               onCreateTask={handleCreateTask}
             />
           ))}
+
+          {/* 1시간 추가 버튼 */}
+          {canExtend && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="mt-2 w-full text-muted-foreground hover:text-foreground"
+              onClick={handleExtendHour}
+            >
+              <Plus className="mr-1 h-4 w-4" />
+              1시간 추가
+            </Button>
+          )}
         </div>
       </ScrollArea>
     </Card>

@@ -43,15 +43,19 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-const HOURS_TO_DISPLAY = 18; // 표시할 시간 범위 (18시간)
 const SLOT_HEIGHT = 48; // 30분당 높이 (px)
+const MAX_END_HOUR = 30; // 최대 종료 시간 (다음 날 06:00까지)
 
-const generateTimeSlots = (startHour: number): string[] => {
+// 시작 시간부터 종료 시간까지의 시간 슬롯 생성
+const generateTimeSlots = (startHour: number, endHour: number): string[] => {
+  const hoursToDisplay = endHour - startHour;
   const slots: string[] = [];
-  for (let i = 0; i < HOURS_TO_DISPLAY; i++) {
-    const h = (startHour + i) % 24;
-    slots.push(`${h.toString().padStart(2, "0")}:00`);
-    slots.push(`${h.toString().padStart(2, "0")}:30`);
+  for (let i = 0; i < hoursToDisplay; i++) {
+    const h = startHour + i;
+    const displayHour = h >= 24 ? h - 24 : h;
+    const prefix = h >= 24 ? "(+1) " : "";
+    slots.push(`${prefix}${displayHour.toString().padStart(2, "0")}:00`);
+    slots.push(`${prefix}${displayHour.toString().padStart(2, "0")}:30`);
   }
   return slots;
 };
@@ -362,21 +366,27 @@ function VerticalTimeline({ fullHeight }: TimelineScheduleProps) {
   const [selectedSlot, setSelectedSlot] = useState<string>("");
   const [creatingSlot, setCreatingSlot] = useState<string | null>(null);
   const [startHour, setStartHour] = useState(6); // 기본값: 06:00
+  const [endHour, setEndHour] = useState(24); // 기본값: 24:00 (자정)
 
-  // 동적 시간 슬롯 생성
-  const timeSlots = generateTimeSlots(startHour);
+  // 동적 시간 슬롯 생성 (시작 시간부터 종료 시간까지)
+  const timeSlots = generateTimeSlots(startHour, endHour);
+
+  // 1시간 추가 가능 여부
+  const canExtend = endHour < MAX_END_HOUR;
+
+  // 1시간 추가 핸들러
+  const handleExtendHour = () => {
+    if (canExtend) {
+      setEndHour((prev) => prev + 1);
+    }
+  };
 
   // 보이는 시간 범위 내의 아이템만 필터링
   const visibleItems = items.filter((item) => {
     const [hours] = item.startAt.split(":").map(Number);
-    const endHour = (startHour + HOURS_TO_DISPLAY) % 24;
-
-    // 자정을 넘어가는 경우 처리 (예: 20:00 시작 → 14:00 종료)
-    if (startHour < endHour) {
-      return hours >= startHour && hours < endHour;
-    } else {
-      return hours >= startHour || hours < endHour;
-    }
+    // 자정 이후(다음 날)는 24+시간으로 계산
+    const normalizedHour = hours < startHour ? hours + 24 : hours;
+    return normalizedHour >= startHour && normalizedHour < endHour;
   });
 
   const handleSlotTap = (time: string) => {
@@ -461,6 +471,19 @@ function VerticalTimeline({ fullHeight }: TimelineScheduleProps) {
                 <TimeBlock key={item.id} item={item} startHour={startHour} />
               ))}
             </div>
+
+            {/* 1시간 추가 버튼 */}
+            {canExtend && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="mt-2 w-full text-muted-foreground hover:text-foreground"
+                onClick={handleExtendHour}
+              >
+                <Plus className="mr-1 h-4 w-4" />
+                1시간 추가
+              </Button>
+            )}
           </div>
         </ScrollArea>
       </Card>
