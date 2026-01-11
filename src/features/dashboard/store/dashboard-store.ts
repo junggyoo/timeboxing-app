@@ -44,6 +44,7 @@ type DashboardActions = {
     durationMin?: number
   ) => void;
   updateTimeBlockDuration: (id: string, durationMin: number) => void;
+  updateTimeBlockStartTime: (id: string, startAt: string) => void;
 };
 
 type DashboardSelectors = {
@@ -214,6 +215,19 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
               ...item,
               durationMin,
               endAt: calculateEndTime(item.startAt, durationMin),
+            }
+          : item
+      ),
+    })),
+
+  updateTimeBlockStartTime: (id, startAt) =>
+    set((state) => ({
+      timeBox: state.timeBox.map((item) =>
+        item.id === id
+          ? {
+              ...item,
+              startAt,
+              endAt: calculateEndTime(startAt, item.durationMin),
             }
           : item
       ),

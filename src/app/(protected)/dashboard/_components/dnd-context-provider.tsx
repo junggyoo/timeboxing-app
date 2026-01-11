@@ -68,7 +68,15 @@ export function DndContextProvider({ children }: DndContextProviderProps) {
 
     const overId = over.id as string;
 
-    // 타임라인 슬롯에 드롭
+    // 수평 타임라인 (시간 단위) 드롭 - timeline-hour-HH 형식
+    if (overId.startsWith("timeline-hour-")) {
+      const hour = overId.replace("timeline-hour-", "");
+      const time = `${hour}:00`;
+      assignToTimeline(activeData.id, activeData.sourceSection, time);
+      return;
+    }
+
+    // 수직 타임라인 슬롯에 드롭 - timeline-HH:MM 형식
     if (overId.startsWith("timeline-")) {
       const time = overId.replace("timeline-", "");
       assignToTimeline(activeData.id, activeData.sourceSection, time);

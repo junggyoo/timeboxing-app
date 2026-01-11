@@ -20,6 +20,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { HorizontalTimeline } from "./horizontal-timeline";
+import { DESKTOP_BREAKPOINT } from "./horizontal-timeline/constants";
+
+// Hook for responsive layout detection
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+
+  useEffect(() => {
+    const checkDesktop = () => {
+      setIsDesktop(window.innerWidth >= DESKTOP_BREAKPOINT);
+    };
+
+    // Initial check
+    checkDesktop();
+
+    // Listen for resize
+    window.addEventListener("resize", checkDesktop);
+    return () => window.removeEventListener("resize", checkDesktop);
+  }, []);
+
+  return isDesktop;
+}
 
 const HOURS_TO_DISPLAY = 18; // 표시할 시간 범위 (18시간)
 const SLOT_HEIGHT = 48; // 30분당 높이 (px)
@@ -315,6 +337,21 @@ const calculateEndTime = (startAt: string, durationMin: number): string => {
 };
 
 export function TimelineSchedule({ fullHeight }: TimelineScheduleProps) {
+  const isDesktop = useIsDesktop();
+
+  // Render horizontal timeline on desktop, vertical on mobile/tablet
+  if (isDesktop) {
+    return <HorizontalTimeline fullHeight={fullHeight} />;
+  }
+
+  return <VerticalTimeline fullHeight={fullHeight} />;
+}
+
+/**
+ * Vertical timeline layout for mobile/tablet.
+ * Original implementation with 30-minute slots.
+ */
+function VerticalTimeline({ fullHeight }: TimelineScheduleProps) {
   const { items, addTimeBox } = useDashboardStore(
     useShallow((state) => ({
       items: state.timeBox,
