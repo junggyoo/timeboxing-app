@@ -1,12 +1,16 @@
 const workerCode = `
   const timers = new Map();
+  const alarms = new Map();  // id -> { type, triggerEpoch, timeboxId, timeboxTitle, hasTriggered }
+  let breakTimer = null;     // { id, startEpoch, durationMs, status, hasEnded }
   let intervalId = null;
 
   function tick() {
+    const now = Date.now();
+
+    // Process focus timers
     timers.forEach((t, id) => {
       if (t.status !== 'running') return;
 
-      const now = Date.now();
       const elapsed = now - t.startEpoch - t.pausedMs;
       const remaining = t.durationMs - elapsed;
       const isOvertime = remaining < 0;
@@ -28,6 +32,42 @@ const workerCode = `
         self.postMessage({ type: 'TIME_UP', payload: { id } });
       }
     });
+
+    // Process scheduled alarms
+    alarms.forEach((alarm, id) => {
+      if (alarm.hasTriggered) return;
+      if (now >= alarm.triggerEpoch) {
+        alarm.hasTriggered = true;
+        self.postMessage({
+          type: alarm.type,
+          payload: {
+            id: alarm.id,
+            timeboxId: alarm.timeboxId,
+            timeboxTitle: alarm.timeboxTitle
+          }
+        });
+      }
+    });
+
+    // Process break timer
+    if (breakTimer && breakTimer.status === 'running') {
+      const elapsed = now - breakTimer.startEpoch;
+      const remaining = breakTimer.durationMs - elapsed;
+      const progress = Math.min(1, elapsed / breakTimer.durationMs);
+
+      self.postMessage({
+        type: 'BREAK_TICK',
+        payload: {
+          remainingMs: Math.max(0, remaining),
+          progress
+        }
+      });
+
+      if (remaining <= 0 && !breakTimer.hasEnded) {
+        breakTimer.hasEnded = true;
+        self.postMessage({ type: 'ALARM_BREAK_END', payload: { id: breakTimer.id } });
+      }
+    }
   }
 
   self.onmessage = (e) => {
@@ -111,6 +151,50 @@ const workerCode = `
           intervalId = setInterval(tick, 250);
         }
         tick();
+        break;
+      }
+
+      // Alarm scheduling commands
+      case 'SCHEDULE_ALARM': {
+        alarms.set(payload.id, {
+          id: payload.id,
+          type: payload.type,
+          triggerEpoch: payload.triggerEpoch,
+          timeboxId: payload.timeboxId,
+          timeboxTitle: payload.timeboxTitle,
+          hasTriggered: false
+        });
+        // Ensure interval is running for alarm checking
+        if (!intervalId) {
+          intervalId = setInterval(tick, 250);
+        }
+        break;
+      }
+
+      case 'CANCEL_ALARM': {
+        alarms.delete(payload.id);
+        break;
+      }
+
+      // Break mode commands
+      case 'START_BREAK': {
+        breakTimer = {
+          id: payload.id,
+          durationMs: payload.durationMs,
+          startEpoch: Date.now(),
+          status: 'running',
+          hasEnded: false
+        };
+        // Ensure interval is running for break timer
+        if (!intervalId) {
+          intervalId = setInterval(tick, 250);
+        }
+        tick();
+        break;
+      }
+
+      case 'SKIP_BREAK': {
+        breakTimer = null;
         break;
       }
     }

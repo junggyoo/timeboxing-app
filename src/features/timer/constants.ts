@@ -32,3 +32,37 @@ export const WIDGET_SIZE = {
 } as const;
 
 export const MOBILE_BAR_HEIGHT = 72;
+
+// Alarm & Break constants
+export const PRE_START_MINUTES = 5;
+export const PRE_START_MS = PRE_START_MINUTES * 60 * 1000;
+export const DEFAULT_BREAK_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+// Break mode colors
+export const BREAK_COLORS = {
+  ring: "#10B981", // Emerald
+  text: "#FFFFFF",
+  bg: "bg-emerald-500",
+} as const;
+
+// Sound configuration for Web Audio API synthesized tones
+export const SOUND_CONFIG = {
+  preStart: {
+    frequency: 880, // A5 - high pitch double beep
+    type: "sine" as OscillatorType,
+    duration: 0.1,
+    volume: 0.3,
+  },
+  focusEnd: {
+    notes: [523.25, 659.25, 783.99, 1046.5], // C5, E5, G5, C6 major chord arpeggio
+    type: "sine" as OscillatorType,
+    noteDuration: 0.12,
+    volume: 0.4,
+  },
+  breakEnd: {
+    frequencies: [440, 550], // A4/C#5 alternating buzzer
+    type: "square" as OscillatorType,
+    duration: 0.15,
+    volume: 0.2,
+  },
+} as const;

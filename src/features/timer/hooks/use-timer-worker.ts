@@ -2,15 +2,36 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { createTimerWorker } from "../lib/timer-worker";
-import type { TickPayload, WorkerCommand, WorkerEvent } from "../types";
+import type {
+  AlarmPayload,
+  BreakTickPayload,
+  ScheduledAlarm,
+  TickPayload,
+  WorkerCommand,
+  WorkerEvent,
+} from "../types";
 
 type UseTimerWorkerOptions = {
   onTick: (payload: TickPayload) => void;
   onTimeUp: (id: string) => void;
   onStopped: (id: string, elapsedMs: number) => void;
+  // Alarm callbacks
+  onAlarmPreStart?: (payload: AlarmPayload) => void;
+  onAlarmEnd?: (payload: AlarmPayload) => void;
+  onAlarmBreakEnd?: (id: string) => void;
+  // Break callbacks
+  onBreakTick?: (payload: BreakTickPayload) => void;
 };
 
-export function useTimerWorker({ onTick, onTimeUp, onStopped }: UseTimerWorkerOptions) {
+export function useTimerWorker({
+  onTick,
+  onTimeUp,
+  onStopped,
+  onAlarmPreStart,
+  onAlarmEnd,
+  onAlarmBreakEnd,
+  onBreakTick,
+}: UseTimerWorkerOptions) {
   const workerRef = useRef<Worker | null>(null);
 
   useEffect(() => {
@@ -21,7 +42,7 @@ export function useTimerWorker({ onTick, onTimeUp, onStopped }: UseTimerWorkerOp
 
       switch (type) {
         case "TICK":
-          onTick(payload);
+          onTick(payload as TickPayload);
           break;
         case "TIME_UP":
           onTimeUp((payload as { id: string }).id);
@@ -31,6 +52,20 @@ export function useTimerWorker({ onTick, onTimeUp, onStopped }: UseTimerWorkerOp
             (payload as { id: string; elapsedMs: number }).id,
             (payload as { id: string; elapsedMs: number }).elapsedMs
           );
+          break;
+        // Alarm events
+        case "ALARM_PRESTART":
+          onAlarmPreStart?.(payload as AlarmPayload);
+          break;
+        case "ALARM_END":
+          onAlarmEnd?.(payload as AlarmPayload);
+          break;
+        case "ALARM_BREAK_END":
+          onAlarmBreakEnd?.((payload as { id: string }).id);
+          break;
+        // Break events
+        case "BREAK_TICK":
+          onBreakTick?.(payload as BreakTickPayload);
           break;
       }
     };
@@ -42,7 +77,7 @@ export function useTimerWorker({ onTick, onTimeUp, onStopped }: UseTimerWorkerOp
         workerRef.current.removeEventListener("message", handleMessage);
       }
     };
-  }, [onTick, onTimeUp, onStopped]);
+  }, [onTick, onTimeUp, onStopped, onAlarmPreStart, onAlarmEnd, onAlarmBreakEnd, onBreakTick]);
 
   const postCommand = useCallback((command: WorkerCommand) => {
     if (workerRef.current) {
@@ -94,5 +129,45 @@ export function useTimerWorker({ onTick, onTimeUp, onStopped }: UseTimerWorkerOp
     [postCommand]
   );
 
-  return { start, pause, resume, stop, restore, postCommand };
+  // Alarm scheduling methods
+  const scheduleAlarm = useCallback(
+    (alarm: ScheduledAlarm) => {
+      postCommand({ type: "SCHEDULE_ALARM", payload: alarm });
+    },
+    [postCommand]
+  );
+
+  const cancelAlarm = useCallback(
+    (id: string) => {
+      postCommand({ type: "CANCEL_ALARM", payload: { id } });
+    },
+    [postCommand]
+  );
+
+  // Break mode methods
+  const startBreak = useCallback(
+    (id: string, durationMs: number) => {
+      postCommand({ type: "START_BREAK", payload: { id, durationMs } });
+    },
+    [postCommand]
+  );
+
+  const skipBreak = useCallback(() => {
+    postCommand({ type: "SKIP_BREAK" });
+  }, [postCommand]);
+
+  return {
+    start,
+    pause,
+    resume,
+    stop,
+    restore,
+    postCommand,
+    // Alarm methods
+    scheduleAlarm,
+    cancelAlarm,
+    // Break methods
+    startBreak,
+    skipBreak,
+  };
 }
