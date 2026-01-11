@@ -76,6 +76,37 @@ const calculateEndTime = (startAt: string, durationMin: number): string => {
   return `${endHours.toString().padStart(2, "0")}:${endMinutes.toString().padStart(2, "0")}`;
 };
 
+const timeToMinutes = (time: string): number => {
+  const [hours, minutes] = time.split(":").map(Number);
+  return hours * 60 + minutes;
+};
+
+const hasTimeOverlap = (
+  newStart: number,
+  newEnd: number,
+  existingStart: number,
+  existingEnd: number
+): boolean => {
+  return newStart < existingEnd && newEnd > existingStart;
+};
+
+const checkTimeBlockOverlap = (
+  timeBoxItems: TimeBoxItem[],
+  startAt: string,
+  durationMin: number,
+  excludeId?: string
+): boolean => {
+  const newStartMinutes = timeToMinutes(startAt);
+  const newEndMinutes = newStartMinutes + durationMin;
+
+  return timeBoxItems.some((item) => {
+    if (excludeId && item.id === excludeId) return false;
+    const existingStart = timeToMinutes(item.startAt);
+    const existingEnd = existingStart + item.durationMin;
+    return hasTimeOverlap(newStartMinutes, newEndMinutes, existingStart, existingEnd);
+  });
+};
+
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
   brainDump: [],
   priorities: [],
@@ -191,6 +222,11 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
 
       if (!item) return state;
 
+      // Check for overlap with existing time blocks
+      if (checkTimeBlockOverlap(state.timeBox, startAt, durationMin)) {
+        return state; // Reject drop if there's overlap
+      }
+
       const newTimeBox: TimeBoxItem = {
         id: crypto.randomUUID(),
         title: item.title,
@@ -208,30 +244,50 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     }),
 
   updateTimeBlockDuration: (id, durationMin) =>
-    set((state) => ({
-      timeBox: state.timeBox.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              durationMin,
-              endAt: calculateEndTime(item.startAt, durationMin),
-            }
-          : item
-      ),
-    })),
+    set((state) => {
+      const currentItem = state.timeBox.find((item) => item.id === id);
+      if (!currentItem) return state;
+
+      // Check for overlap with other time blocks (exclude self)
+      if (checkTimeBlockOverlap(state.timeBox, currentItem.startAt, durationMin, id)) {
+        return state; // Reject resize if there's overlap
+      }
+
+      return {
+        timeBox: state.timeBox.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                durationMin,
+                endAt: calculateEndTime(item.startAt, durationMin),
+              }
+            : item
+        ),
+      };
+    }),
 
   updateTimeBlockStartTime: (id, startAt) =>
-    set((state) => ({
-      timeBox: state.timeBox.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              startAt,
-              endAt: calculateEndTime(startAt, item.durationMin),
-            }
-          : item
-      ),
-    })),
+    set((state) => {
+      const currentItem = state.timeBox.find((item) => item.id === id);
+      if (!currentItem) return state;
+
+      // Check for overlap with other time blocks (exclude self)
+      if (checkTimeBlockOverlap(state.timeBox, startAt, currentItem.durationMin, id)) {
+        return state; // Reject move if there's overlap
+      }
+
+      return {
+        timeBox: state.timeBox.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                startAt,
+                endAt: calculateEndTime(startAt, item.durationMin),
+              }
+            : item
+        ),
+      };
+    }),
 
   setSelectedDate: (date) => set({ selectedDate: date }),
   setGoal: (goal) => set({ goal }),

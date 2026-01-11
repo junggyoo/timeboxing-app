@@ -1,7 +1,9 @@
-import { useCallback, useState, type RefObject } from "react";
+import { useCallback, useState, useRef, type RefObject } from "react";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 import { MINUTE_GRID, MIN_DURATION } from "./constants";
 import { snapToGrid, formatTime } from "./use-block-position";
+
+const DRAG_THRESHOLD = 5; // 5px threshold to distinguish click from drag
 
 type UseHorizontalDragOptions = {
   item: TimeBoxItem;
@@ -12,6 +14,7 @@ type UseHorizontalDragOptions = {
 
 type UseHorizontalDragReturn = {
   isDragging: boolean;
+  wasDraggedRef: React.MutableRefObject<boolean>;
   handleDragStart: (e: React.MouseEvent) => void;
 };
 
@@ -27,19 +30,29 @@ export function useHorizontalDrag({
   onStartTimeChange,
 }: UseHorizontalDragOptions): UseHorizontalDragReturn {
   const [isDragging, setIsDragging] = useState(false);
+  const wasDraggedRef = useRef(false);
 
   const handleDragStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setIsDragging(true);
+      wasDraggedRef.current = false;
 
       const rowWidth = rowRef.current?.offsetWidth ?? 1;
       const startX = e.clientX;
+      const startY = e.clientY;
       const [, startMinute] = item.startAt.split(":").map(Number);
       const duration = item.durationMin;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
+        // Check if movement exceeds threshold to distinguish click from drag
+        const dx = moveEvent.clientX - startX;
+        const dy = moveEvent.clientY - startY;
+        if (Math.sqrt(dx * dx + dy * dy) > DRAG_THRESHOLD) {
+          wasDraggedRef.current = true;
+        }
+
         const deltaX = moveEvent.clientX - startX;
         // Convert pixel delta to minute delta
         const minutesPerPixel = 60 / rowWidth;
@@ -64,6 +77,10 @@ export function useHorizontalDrag({
         setIsDragging(false);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
+        // Delay reset so click handler can check wasDraggedRef
+        setTimeout(() => {
+          wasDraggedRef.current = false;
+        }, 100);
       };
 
       document.addEventListener("mousemove", handleMouseMove);
@@ -72,5 +89,5 @@ export function useHorizontalDrag({
     [item.id, item.startAt, item.durationMin, rowRef, rowHour, onStartTimeChange]
   );
 
-  return { isDragging, handleDragStart };
+  return { isDragging, wasDraggedRef, handleDragStart };
 }

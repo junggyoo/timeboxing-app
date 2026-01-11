@@ -82,12 +82,19 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
   });
 
   // Horizontal drag hook (only for start blocks)
-  const { isDragging, handleDragStart } = useHorizontalDrag({
+  const { isDragging, wasDraggedRef, handleDragStart } = useHorizontalDrag({
     item,
     rowRef,
     rowHour,
     onStartTimeChange: updateTimeBlockStartTime,
   });
+
+  // Click handler that checks for drag to prevent accidental edit mode
+  const handleTitleClick = useCallback(() => {
+    if (!wasDraggedRef.current) {
+      setIsEditing(true);
+    }
+  }, [wasDraggedRef]);
 
   const handleSave = useCallback(() => {
     if (editTitle.trim() && editTitle.trim() !== item.title) {
@@ -146,6 +153,7 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           isStartBlock && !isEditing && "cursor-move"
         )}
         onMouseDown={isStartBlock && !isEditing ? handleDragStart : undefined}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Content wrapper with overflow hidden */}
         <div className="h-full w-full overflow-hidden">
@@ -160,7 +168,7 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           />
         ) : (
           <>
-            <div onDoubleClick={() => setIsEditing(true)}>
+            <div onClick={handleTitleClick}>
               {/* Only show title on start block */}
               {isStartBlock ? (
                 <p className="truncate text-xs font-medium leading-tight">
