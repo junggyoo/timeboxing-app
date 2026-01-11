@@ -29,6 +29,7 @@ export type TimeBoxItem = {
   status: TimeBoxStatus;
   sourceItemId?: string;
   sourceSection?: ItemSectionKey;
+  actualDurationMin?: number;
 };
 
 export type MemoItem = {

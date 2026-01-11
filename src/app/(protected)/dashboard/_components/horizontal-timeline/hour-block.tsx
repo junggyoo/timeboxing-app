@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback, useMemo, type RefObject } from "react
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Pencil, Trash2, GripVertical } from "lucide-react";
+import { Pencil, Trash2, GripVertical, Play, Pause } from "lucide-react";
+import { useTimerStore, useTimerActions } from "@/features/timer";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 import { useShallow } from "zustand/react/shallow";
@@ -56,6 +57,18 @@ type HourBlockProps = {
 export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Timer state from store
+  const timerTimeboxId = useTimerStore((s) => s.timeboxId);
+  const timerStatus = useTimerStore((s) => s.status);
+
+  // Timer actions from provider
+  const { start, pause, resume } = useTimerActions();
+
+  const isTimerActiveForThis = timerTimeboxId === item.id;
+  const isTimerRunning = isTimerActiveForThis && timerStatus === "running";
+  const isTimerPaused = isTimerActiveForThis && timerStatus === "paused";
 
   const { editItem, removeItem, updateTimeBlockDuration, updateTimeBlockStartTime } =
     useDashboardStore(
@@ -123,6 +136,26 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
   // Whether to show resize handle (only when block ends in this row)
   const showResizeHandle = !continuesNext;
 
+  // Timer control handlers
+  const handlePlayClick = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (isTimerRunning) {
+        pause();
+      } else if (isTimerPaused) {
+        resume();
+      } else {
+        // Start new timer
+        start(item.id, item.title, item.durationMin);
+      }
+    },
+    [item.id, item.title, item.durationMin, start, pause, resume, isTimerRunning, isTimerPaused]
+  );
+
+  // Determine if we should show the play button outside the block (for narrow blocks)
+  // Narrow = less than 30 minutes (50% width = 30 min in 1-hour row)
+  const isNarrowBlock = width < 50;
+
   return (
     <TimelineTooltip
       title={item.title}
@@ -134,16 +167,21 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
         style={{
           left: `${left}%`,
           width: `${width}%`,
+          // Hover elevation: boost z-index when hovered to bring block and floating buttons to front
+          zIndex: isHovered || isResizing || isDragging ? 50 : 1,
         }}
         className={cn(
           "group absolute bottom-1 top-1 rounded border-2 px-1.5 py-0.5",
-          "transition-colors shadow-sm",
+          "transition-all shadow-sm",
           // Task color based on ID (for visual distinction)
           taskColor.bg,
           taskColor.border,
-          // Status styling (overrides default color for done/ongoing)
+          // Status styling (only for done - ongoing style is handled by timer states)
           item.status === "done" && "bg-muted/80 border-muted-foreground/30 opacity-70",
-          item.status === "ongoing" && "border-primary bg-primary/15 ring-1 ring-primary/20",
+          // Timer running state - thick blue border with subtle pulse animation
+          isTimerRunning && "border-primary border-[3px] shadow-md shadow-primary/20 animate-pulse",
+          // Timer paused state - amber border
+          isTimerPaused && "border-amber-500 border-[3px] shadow-md shadow-amber-500/20",
           // Drag/resize states
           (isResizing || isDragging) && "select-none ring-2 ring-primary/50",
           // Visual connection for multi-hour tasks
@@ -153,10 +191,12 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           isStartBlock && !isEditing && "cursor-move"
         )}
         onMouseDown={isStartBlock && !isEditing ? handleDragStart : undefined}
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Content wrapper with overflow hidden */}
-        <div className="h-full w-full overflow-hidden">
+        {/* Content wrapper with overflow hidden - strictly enforce boundaries */}
+        <div className="relative h-full w-full overflow-hidden">
         {isEditing ? (
           <Input
             value={editTitle}
@@ -168,11 +208,19 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           />
         ) : (
           <>
+            {/* Text content */}
             <div onClick={handleTitleClick}>
               {/* Only show title on start block */}
               {isStartBlock ? (
-                <p className="truncate text-xs font-medium leading-tight">
-                  {item.title}
+                <p className="truncate text-xs font-medium leading-tight flex items-center gap-1">
+                  {/* Small running indicator dot */}
+                  {isTimerRunning && (
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary animate-pulse flex-shrink-0" />
+                  )}
+                  {isTimerPaused && (
+                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                  )}
+                  <span className="truncate">{item.title}</span>
                 </p>
               ) : (
                 <p className="text-xs text-muted-foreground">...</p>
@@ -191,9 +239,91 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
               )}
             </div>
 
-            {/* Edit/Delete buttons - only on start block */}
-            {isStartBlock && (
-              <div className="absolute right-0.5 top-0.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            {/* Action buttons for WIDE blocks - positioned at top-right corner */}
+            {isStartBlock && !isNarrowBlock && (
+              <div className={cn(
+                "absolute right-0 top-0 flex gap-0.5 rounded px-0.5 py-0.5",
+                // Background for visibility
+                "bg-background/90 dark:bg-background/90",
+                "shadow-[0_0_4px_rgba(0,0,0,0.1)] dark:shadow-[0_0_4px_rgba(0,0,0,0.3)]",
+                // Hover-only visibility with grace period
+                "opacity-0 invisible transition-all duration-150",
+                "[transition-delay:150ms]",
+                "group-hover:opacity-100 group-hover:visible group-hover:[transition-delay:0ms]"
+              )}>
+                {item.status !== "done" && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-5 w-5",
+                      isTimerRunning && "text-primary",
+                      isTimerPaused && "text-amber-500"
+                    )}
+                    onClick={handlePlayClick}
+                  >
+                    {isTimerRunning ? (
+                      <Pause className="h-2.5 w-2.5" />
+                    ) : (
+                      <Play className="h-2.5 w-2.5" />
+                    )}
+                  </Button>
+                )}
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-5 w-5"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsEditing(true);
+                  }}
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-5 w-5 text-destructive hover:text-destructive"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeItem("timeBox", item.id);
+                  }}
+                >
+                  <Trash2 className="h-2.5 w-2.5" />
+                </Button>
+              </div>
+            )}
+
+            {/* Action buttons for NARROW blocks - same positioning as wide blocks */}
+            {isStartBlock && isNarrowBlock && (
+              <div className={cn(
+                "absolute right-0 top-0 flex gap-0.5 rounded px-0.5 py-0.5",
+                // Background for visibility
+                "bg-background/90 dark:bg-background/90",
+                "shadow-[0_0_4px_rgba(0,0,0,0.1)] dark:shadow-[0_0_4px_rgba(0,0,0,0.3)]",
+                // Hover-only visibility with grace period
+                "opacity-0 invisible transition-all duration-150",
+                "[transition-delay:150ms]",
+                "group-hover:opacity-100 group-hover:visible group-hover:[transition-delay:0ms]"
+              )}>
+                {item.status !== "done" && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-5 w-5",
+                      isTimerRunning && "text-primary",
+                      isTimerPaused && "text-amber-500"
+                    )}
+                    onClick={handlePlayClick}
+                  >
+                    {isTimerRunning ? (
+                      <Pause className="h-2.5 w-2.5" />
+                    ) : (
+                      <Play className="h-2.5 w-2.5" />
+                    )}
+                  </Button>
+                )}
                 <Button
                   size="icon"
                   variant="ghost"
