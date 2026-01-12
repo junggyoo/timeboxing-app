@@ -1,15 +1,17 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Pause, Play, Square } from "lucide-react";
+import { Coffee, Pause, Play, Square } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type TimerControlsProps = {
   isRunning: boolean;
   isPaused: boolean;
+  isOvertime?: boolean;
   onPause: () => void;
   onResume: () => void;
   onStop: () => void;
+  onFinishAndBreak?: () => void;
   size?: "sm" | "md" | "lg";
   className?: string;
 };
@@ -32,9 +34,11 @@ const sizeStyles = {
 export function TimerControls({
   isRunning,
   isPaused,
+  isOvertime = false,
   onPause,
   onResume,
   onStop,
+  onFinishAndBreak,
   size = "md",
   className,
 }: TimerControlsProps) {
@@ -42,6 +46,19 @@ export function TimerControls({
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
+      {/* Finish & Break button (shown during overtime) */}
+      {isOvertime && onFinishAndBreak && (
+        <Button
+          onClick={onFinishAndBreak}
+          className="gap-2 bg-emerald-600 hover:bg-emerald-700"
+          size={size === "sm" ? "sm" : "default"}
+        >
+          <Coffee className={styles.icon} />
+          <span className="hidden sm:inline">완료 및 휴식</span>
+        </Button>
+      )}
+
+      {/* Pause/Resume button */}
       {isRunning ? (
         <Button
           variant="outline"
@@ -64,6 +81,7 @@ export function TimerControls({
         </Button>
       )}
 
+      {/* Stop button */}
       <Button
         variant="outline"
         size="icon"

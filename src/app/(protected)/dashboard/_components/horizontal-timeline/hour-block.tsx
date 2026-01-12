@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Pencil, Trash2, GripVertical, Play, Pause } from "lucide-react";
-import { useTimerStore, useTimerActions } from "@/features/timer";
+import { useTimerActions } from "@/features/timer";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 import { useShallow } from "zustand/react/shallow";
@@ -59,16 +59,12 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
   const [editTitle, setEditTitle] = useState(item.title);
   const [isHovered, setIsHovered] = useState(false);
 
-  // Timer state from store
-  const timerTimeboxId = useTimerStore((s) => s.timeboxId);
-  const timerStatus = useTimerStore((s) => s.status);
+  // Timer state and actions from provider (FSM-based)
+  const { timeboxId, status, start, pause, resume } = useTimerActions();
 
-  // Timer actions from provider
-  const { start, pause, resume } = useTimerActions();
-
-  const isTimerActiveForThis = timerTimeboxId === item.id;
-  const isTimerRunning = isTimerActiveForThis && timerStatus === "running";
-  const isTimerPaused = isTimerActiveForThis && timerStatus === "paused";
+  const isTimerActiveForThis = timeboxId === item.id;
+  const isTimerRunning = isTimerActiveForThis && status === "running";
+  const isTimerPaused = isTimerActiveForThis && status === "paused";
 
   const { editItem, removeItem, updateTimeBlockDuration, updateTimeBlockStartTime } =
     useDashboardStore(

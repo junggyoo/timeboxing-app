@@ -14,6 +14,12 @@ export type {
   AlarmPayload,
   PersistedTimerState,
   BroadcastMessage,
+  // FSM types
+  FsmState,
+  FsmEvent,
+  FsmContext,
+  FsmStore,
+  TransitionResult,
 } from "./types";
 
 // Constants
@@ -21,9 +27,11 @@ export {
   TICK_INTERVAL_MS,
   PERSISTENCE_KEY,
   BROADCAST_CHANNEL_NAME,
+  TAB_SYNC_CHANNEL_NAME,
   WIDGET_POSITION_KEY,
   TIMER_COLORS,
   BREAK_COLORS,
+  OVERTIME_COLORS,
   DEFAULT_WIDGET_POSITION,
   WIDGET_SIZE,
   MOBILE_BAR_HEIGHT,
@@ -43,8 +51,20 @@ export {
   selectIsFocusMode,
 } from "./store/timer-store";
 
+export { useTabStore, selectIsActiveTab, selectTabId } from "./store/tab-store";
+
+export { useFsmStore } from "./hooks/use-timebox-fsm";
+
 // Hooks
 export { useTimer } from "./hooks/use-timer";
+export { useTimeboxFsm } from "./hooks/use-timebox-fsm";
+export { useSingleTabEnforcement } from "./hooks/use-single-tab-enforcement";
+export {
+  useNextTaskSuggestion,
+  usePendingTasks,
+  type SuggestedTask,
+  type SuggestionReason,
+} from "./hooks/use-next-task-suggestion";
 export { useTimerWorker } from "./hooks/use-timer-worker";
 export { useTimerPersistence } from "./hooks/use-timer-persistence";
 export { useTimerSync } from "./hooks/use-timer-sync";
@@ -68,4 +88,6 @@ export { TimerFullscreen } from "./components/timer-fullscreen";
 export { TimerMobileBar } from "./components/timer-mobile-bar";
 export { TimerProvider, useTimerActions } from "./components/timer-provider";
 export { BreakCountdown } from "./components/break-countdown";
+export { BreakReadyModal } from "./components/break-ready-modal";
+export { TabInactiveOverlay } from "./components/tab-inactive-overlay";
 export { SoundTest } from "./components/sound-test";

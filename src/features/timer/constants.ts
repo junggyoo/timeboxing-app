@@ -1,6 +1,7 @@
 export const TICK_INTERVAL_MS = 250;
 export const PERSISTENCE_KEY = "timebox-timer-state";
 export const BROADCAST_CHANNEL_NAME = "timebox-timer-sync";
+export const TAB_SYNC_CHANNEL_NAME = "timebox-tab-sync";
 export const WIDGET_POSITION_KEY = "timebox-timer-widget-position";
 
 export const TIMER_COLORS = {
@@ -43,6 +44,14 @@ export const BREAK_COLORS = {
   ring: "#10B981", // Emerald
   text: "#FFFFFF",
   bg: "bg-emerald-500",
+} as const;
+
+// Overtime mode colors
+export const OVERTIME_COLORS = {
+  ring: "#EF4444", // Red
+  text: "#EF4444",
+  bg: "bg-red-500",
+  pulseAnimation: "animate-pulse",
 } as const;
 
 // Sound configuration for Web Audio API synthesized tones

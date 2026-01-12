@@ -2,9 +2,10 @@
 
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { Coffee, X } from "lucide-react";
-import { useBreakMode } from "../hooks/use-break-mode";
+import { Coffee, Minimize2 } from "lucide-react";
+import { useTimerActions } from "./timer-provider";
 import { BREAK_COLORS } from "../constants";
+import { formatTime } from "../lib/format-time";
 
 /**
  * Break mode countdown overlay.
@@ -12,18 +13,24 @@ import { BREAK_COLORS } from "../constants";
  * Displays a full-screen overlay during break time with:
  * - Visual progress ring
  * - Remaining break time
+ * - Minimize button (to continue break in widget mode)
  * - Skip break button
  */
 export function BreakCountdown() {
-  const {
-    isBreakMode,
-    breakRemainingMs,
-    breakProgress,
-    formattedBreakTime,
-    skipBreak,
-  } = useBreakMode();
+  const { isBreakMode, isBreakRunning, breakRemainingMs, skipBreak, setDisplayMode, displayMode } =
+    useTimerActions();
 
-  if (!isBreakMode) return null;
+  // Calculate progress
+  const breakDurationMs = 5 * 60 * 1000; // 5 minutes default
+  const breakProgress =
+    breakDurationMs > 0 ? 1 - breakRemainingMs / breakDurationMs : 0;
+  const formattedBreakTime = formatTime(breakRemainingMs, false);
+
+  // Don't render if not in break mode
+  if (!isBreakMode && !isBreakRunning) return null;
+
+  // Don't render fullscreen overlay if displayMode is widget or minimized
+  if (displayMode !== "fullscreen") return null;
 
   // Ring calculations
   const size = 200;
@@ -41,21 +48,21 @@ export function BreakCountdown() {
         "animate-in fade-in duration-300"
       )}
     >
-      {/* Close button */}
+      {/* Minimize button - continues break in widget mode */}
       <Button
         variant="ghost"
         size="icon"
         className="absolute top-4 right-4 text-white/60 hover:text-white hover:bg-white/10"
-        onClick={skipBreak}
+        onClick={() => setDisplayMode("widget")}
       >
-        <X className="h-5 w-5" />
-        <span className="sr-only">Skip break</span>
+        <Minimize2 className="h-5 w-5" />
+        <span className="sr-only">Minimize</span>
       </Button>
 
       {/* Header */}
       <div className="flex items-center gap-2 mb-8 text-emerald-300">
         <Coffee className="h-6 w-6" />
-        <h2 className="text-xl font-medium">Break Time</h2>
+        <h2 className="text-xl font-medium">휴식 시간</h2>
       </div>
 
       {/* Progress ring */}
@@ -91,7 +98,7 @@ export function BreakCountdown() {
           <span className="text-4xl font-mono font-bold text-white tabular-nums">
             {formattedBreakTime}
           </span>
-          <span className="text-sm text-emerald-300 mt-1">remaining</span>
+          <span className="text-sm text-emerald-300 mt-1">남음</span>
         </div>
       </div>
 
@@ -106,12 +113,12 @@ export function BreakCountdown() {
         )}
         onClick={skipBreak}
       >
-        Skip Break
+        휴식 건너뛰기
       </Button>
 
       {/* Encouraging message */}
       <p className="mt-6 text-sm text-emerald-400/80 max-w-xs text-center">
-        Take a moment to rest your eyes, stretch, or grab a drink.
+        잠시 눈을 쉬거나, 스트레칭을 하거나, 음료를 마시세요.
       </p>
     </div>
   );

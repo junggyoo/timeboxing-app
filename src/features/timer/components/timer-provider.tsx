@@ -1,26 +1,72 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef } from "react";
+import { createContext, useContext, useEffect, useRef } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { useToast } from "@/hooks/use-toast";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
-import { useTimerStore } from "../store/timer-store";
-import { createTimerWorker } from "../lib/timer-worker";
-import { useTimerPersistence } from "../hooks/use-timer-persistence";
-import { useWakeLock } from "../hooks/use-wake-lock";
-import { useDocumentTitle } from "../hooks/use-document-title";
-import { formatTime, minutesToMs, msToMinutes } from "../lib/format-time";
-import type { PersistedTimerState, TickPayload, WorkerEvent } from "../types";
+import { useTimeboxFsm } from "../hooks/use-timebox-fsm";
+import { useSingleTabEnforcement } from "../hooks/use-single-tab-enforcement";
+import { BreakReadyModal } from "./break-ready-modal";
+import { TabInactiveOverlay } from "./tab-inactive-overlay";
+import type { DisplayMode } from "../types";
 
 type TimerContextValue = {
-  start: (timeboxId: string, timeboxTitle: string, durationMin: number) => void;
+  // FSM State
+  state: ReturnType<typeof useTimeboxFsm>["state"];
+  isIdle: boolean;
+  isFocusRunning: boolean;
+  isFocusPaused: boolean;
+  isOvertimeRunning: boolean;
+  isBreakReady: boolean;
+  isBreakRunning: boolean;
+  isBreakCompleted: boolean;
+
+  // Derived states (for compatibility)
+  isActive: boolean;
+  isRunning: boolean;
+  isPaused: boolean;
+  isOvertime: boolean;
+  isBreakMode: boolean;
+  status: "idle" | "running" | "paused";
+  breakMode: "idle" | "focus" | "break";
+
+  // Context values
+  timeboxId: string | null;
+  timeboxTitle: string | null;
+  remainingMs: number;
+  elapsedMs: number;
+  overtimeMs: number;
+  breakRemainingMs: number;
+  durationMs: number;
+  formattedTime: string;
+  progress: number;
+  displayMode: DisplayMode;
+
+  // Actions
+  start: (
+    timeboxId: string,
+    timeboxTitle: string,
+    durationMin: number,
+    scheduledStartEpoch?: number
+  ) => void;
   pause: () => void;
   resume: () => void;
   stop: () => void;
+  finishAndBreak: () => void;
+  startBreak: () => void;
+  skipBreak: () => void;
+  dismissBreak: () => void;
+  setDisplayMode: (mode: DisplayMode) => void;
+
+  // Tab enforcement
+  isActiveTab: boolean;
 };
 
 const TimerContext = createContext<TimerContextValue | null>(null);
 
+/**
+ * Hook to access timer actions within the TimerProvider context
+ */
 export function useTimerActions() {
   const context = useContext(TimerContext);
   if (!context) {
@@ -29,159 +75,42 @@ export function useTimerActions() {
   return context;
 }
 
+/**
+ * Timer Provider with FSM-based state management
+ *
+ * Provides:
+ * - Full FSM state and actions
+ * - Single tab enforcement
+ * - Break ready modal
+ * - Tab inactive overlay
+ */
 export function TimerProvider({ children }: { children: React.ReactNode }) {
   const { toast } = useToast();
-  const workerRef = useRef<Worker | null>(null);
-  const hasRestoredRef = useRef(false);
 
-  // Store state
-  const timeboxId = useTimerStore((s) => s.timeboxId);
-  const timeboxTitle = useTimerStore((s) => s.timeboxTitle);
-  const status = useTimerStore((s) => s.status);
-  const durationMs = useTimerStore((s) => s.durationMs);
-  const remainingMs = useTimerStore((s) => s.remainingMs);
-  const isOvertime = useTimerStore((s) => s.isOvertime);
-  const startEpoch = useTimerStore((s) => s.startEpoch);
-  const pausedMs = useTimerStore((s) => s.pausedMs);
+  // FSM hook for timer state management
+  const fsm = useTimeboxFsm();
 
-  // Store actions
-  const startTimer = useTimerStore((s) => s.startTimer);
-  const pauseTimer = useTimerStore((s) => s.pauseTimer);
-  const resumeTimer = useTimerStore((s) => s.resumeTimer);
-  const stopTimer = useTimerStore((s) => s.stopTimer);
-  const updateTick = useTimerStore((s) => s.updateTick);
-  const restore = useTimerStore((s) => s.restore);
+  // Single tab enforcement
+  const { isActiveTab, claimOnInteraction } = useSingleTabEnforcement();
 
   // Dashboard store - watch for timebox deletion
-  const { editItem, timeBoxIds } = useDashboardStore(
+  const { timeBoxIds } = useDashboardStore(
     useShallow((s) => ({
-      editItem: s.editItem,
       timeBoxIds: new Set(s.timeBox.map((item) => item.id)),
     }))
   );
-  const persistence = useTimerPersistence();
 
-  const isActive = status !== "idle";
-  const isRunning = status === "running";
-
-  // Refs for callbacks
-  const stateRef = useRef({ timeboxId, timeboxTitle });
-  stateRef.current = { timeboxId, timeboxTitle };
-
-  // Wake lock
-  useWakeLock(isRunning);
-
-  // Document title
-  useDocumentTitle({
-    enabled: isActive,
-    remainingMs,
-    isOvertime,
-    taskTitle: timeboxTitle,
-  });
-
-  // Initialize worker and set up message handler
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-
-    workerRef.current = createTimerWorker();
-
-    const handleMessage = (e: MessageEvent<WorkerEvent>) => {
-      const { type, payload } = e.data;
-
-      switch (type) {
-        case "TICK":
-          updateTick(payload as TickPayload);
-          break;
-        case "TIME_UP":
-          toast({
-            title: "Time's up!",
-            description: "Overtime mode started. Keep going or stop when ready.",
-            variant: "destructive",
-          });
-          break;
-        case "STOPPED": {
-          const { elapsedMs } = payload as { id: string; elapsedMs: number };
-          const actualDurationMin = msToMinutes(elapsedMs);
-
-          if (stateRef.current.timeboxId) {
-            editItem("timeBox", stateRef.current.timeboxId, {
-              actualDurationMin,
-            } as any);
-          }
-
-          stopTimer();
-          persistence.clear();
-
-          toast({
-            title: "Timer stopped",
-            description: `Tracked: ${formatTime(elapsedMs, false)}`,
-          });
-          break;
-        }
-      }
-    };
-
-    workerRef.current.addEventListener("message", handleMessage);
-
-    return () => {
-      workerRef.current?.removeEventListener("message", handleMessage);
-    };
-  }, [updateTick, stopTimer, editItem, persistence, toast]);
-
-  // Restore from persistence on mount
-  useEffect(() => {
-    if (hasRestoredRef.current || !workerRef.current) return;
-    hasRestoredRef.current = true;
-
-    const saved = persistence.load();
-    if (saved) {
-      restore({
-        timeboxId: saved.timeboxId,
-        timeboxTitle: saved.timeboxTitle,
-        status: saved.status,
-        durationMs: saved.durationMs,
-        startEpoch: saved.startEpoch,
-        pausedMs: saved.pausedMs,
-      });
-
-      workerRef.current.postMessage({
-        type: "RESTORE",
-        payload: {
-          id: saved.timeboxId,
-          startEpoch: saved.startEpoch,
-          pausedMs: saved.pausedMs,
-          durationMs: saved.durationMs,
-          status: saved.status,
-        },
-      });
-
-      editItem("timeBox", saved.timeboxId, { status: "ongoing" });
-    }
-  }, []);
-
-  // Save state changes to persistence
-  useEffect(() => {
-    if (!isActive || !timeboxId || !timeboxTitle || !startEpoch) return;
-
-    const persisted: PersistedTimerState = {
-      version: 1,
-      timeboxId,
-      timeboxTitle,
-      startEpoch,
-      pausedMs,
-      durationMs,
-      status: status === "paused" ? "paused" : "running",
-    };
-    persistence.save(persisted);
-  }, [isActive, timeboxId, timeboxTitle, startEpoch, pausedMs, durationMs, status, persistence]);
+  // Ref to track current timebox for deletion detection
+  const currentTimeboxIdRef = useRef(fsm.timeboxId);
+  currentTimeboxIdRef.current = fsm.timeboxId;
 
   // Watch for timebox deletion - stop timer if the active timebox is deleted
   useEffect(() => {
-    if (!isActive || !timeboxId) return;
+    if (!fsm.isActive || !fsm.timeboxId) return;
 
     // If the current timebox is no longer in the list, stop the timer
-    if (!timeBoxIds.has(timeboxId)) {
-      workerRef.current?.postMessage({ type: "STOP", payload: { id: timeboxId } });
+    if (!timeBoxIds.has(fsm.timeboxId)) {
+      fsm.stop();
 
       toast({
         title: "Timer stopped",
@@ -189,69 +118,101 @@ export function TimerProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
     }
-  }, [isActive, timeboxId, timeBoxIds, toast]);
+  }, [fsm.isActive, fsm.timeboxId, timeBoxIds, toast, fsm.stop]);
 
-  // Actions
-  const start = useCallback(
-    (id: string, title: string, durationMin: number) => {
-      const durationMsValue = minutesToMs(durationMin);
+  // Claim active tab on user interaction
+  useEffect(() => {
+    const handleInteraction = () => {
+      claimOnInteraction();
+    };
 
-      startTimer(id, title, durationMsValue);
+    window.addEventListener("click", handleInteraction);
+    window.addEventListener("keydown", handleInteraction);
 
-      workerRef.current?.postMessage({
-        type: "START",
-        payload: { id, durationMs: durationMsValue },
-      });
+    return () => {
+      window.removeEventListener("click", handleInteraction);
+      window.removeEventListener("keydown", handleInteraction);
+    };
+  }, [claimOnInteraction]);
 
-      editItem("timeBox", id, { status: "ongoing" });
-
-      toast({
-        title: "Timer started",
-        description: `Focus on: ${title}`,
-      });
-    },
-    [startTimer, editItem, toast]
-  );
-
-  const pause = useCallback(() => {
-    const id = stateRef.current.timeboxId;
-    if (!id) return;
-
-    pauseTimer();
-    workerRef.current?.postMessage({ type: "PAUSE", payload: { id } });
-
-    toast({
-      title: "Timer paused",
-      description: stateRef.current.timeboxTitle || undefined,
-    });
-  }, [pauseTimer, toast]);
-
-  const resume = useCallback(() => {
-    const id = stateRef.current.timeboxId;
-    if (!id) return;
-
-    resumeTimer();
-    workerRef.current?.postMessage({ type: "RESUME", payload: { id } });
-
-    toast({
-      title: "Timer resumed",
-      description: stateRef.current.timeboxTitle || undefined,
-    });
-  }, [resumeTimer, toast]);
-
-  const stop = useCallback(() => {
-    const id = stateRef.current.timeboxId;
-    if (!id) return;
-
-    workerRef.current?.postMessage({ type: "STOP", payload: { id } });
-  }, []);
-
+  // Context value combining FSM state and tab enforcement
   const value: TimerContextValue = {
-    start,
-    pause,
-    resume,
-    stop,
+    // FSM State
+    state: fsm.state,
+    isIdle: fsm.isIdle,
+    isFocusRunning: fsm.isFocusRunning,
+    isFocusPaused: fsm.isFocusPaused,
+    isOvertimeRunning: fsm.isOvertimeRunning,
+    isBreakReady: fsm.isBreakReady,
+    isBreakRunning: fsm.isBreakRunning,
+    isBreakCompleted: fsm.isBreakCompleted,
+
+    // Derived states
+    isActive: fsm.isActive,
+    isRunning: fsm.isRunning,
+    isPaused: fsm.isPaused,
+    isOvertime: fsm.isOvertime,
+    isBreakMode: fsm.isBreakMode,
+    status: fsm.status,
+    breakMode: fsm.breakMode,
+
+    // Context values
+    timeboxId: fsm.timeboxId,
+    timeboxTitle: fsm.timeboxTitle,
+    remainingMs: fsm.remainingMs,
+    elapsedMs: fsm.elapsedMs,
+    overtimeMs: fsm.overtimeMs,
+    breakRemainingMs: fsm.breakRemainingMs,
+    durationMs: fsm.durationMs,
+    formattedTime: fsm.formattedTime,
+    progress: fsm.progress,
+    displayMode: fsm.displayMode,
+
+    // Actions (guarded by isActiveTab check)
+    start: (timeboxId, timeboxTitle, durationMin, scheduledStartEpoch) => {
+      if (!isActiveTab) return;
+      fsm.start(timeboxId, timeboxTitle, durationMin, scheduledStartEpoch);
+    },
+    pause: () => {
+      if (!isActiveTab) return;
+      fsm.pause();
+    },
+    resume: () => {
+      if (!isActiveTab) return;
+      fsm.resume();
+    },
+    stop: () => {
+      if (!isActiveTab) return;
+      fsm.stop();
+    },
+    finishAndBreak: () => {
+      if (!isActiveTab) return;
+      fsm.finishAndBreak();
+    },
+    startBreak: () => {
+      if (!isActiveTab) return;
+      fsm.startBreak();
+    },
+    skipBreak: () => {
+      if (!isActiveTab) return;
+      fsm.skipBreak();
+    },
+    dismissBreak: () => {
+      if (!isActiveTab) return;
+      fsm.dismissBreak();
+    },
+    setDisplayMode: fsm.setDisplayMode,
+
+    // Tab enforcement
+    isActiveTab,
   };
 
-  return <TimerContext.Provider value={value}>{children}</TimerContext.Provider>;
+  return (
+    <TimerContext.Provider value={value}>
+      {children}
+      {/* Modals and overlays */}
+      <BreakReadyModal />
+      <TabInactiveOverlay />
+    </TimerContext.Provider>
+  );
 }

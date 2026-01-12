@@ -3,13 +3,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Expand, Minimize2, GripHorizontal } from "lucide-react";
+import { Expand, Minimize2, GripHorizontal, Coffee } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { DEFAULT_WIDGET_POSITION, WIDGET_POSITION_KEY, WIDGET_SIZE } from "../constants";
+import { DEFAULT_WIDGET_POSITION, WIDGET_POSITION_KEY, WIDGET_SIZE, BREAK_COLORS } from "../constants";
 import { TimerProgressRing } from "./timer-progress-ring";
 import { TimerDisplay } from "./timer-display";
 import { TimerControls } from "./timer-controls";
-import { useTimerStore } from "../store/timer-store";
 import { useTimerActions } from "./timer-provider";
 
 type Position = { x: number; y: number };
@@ -36,21 +35,28 @@ function savePosition(pos: Position) {
 }
 
 export function TimerWidget() {
-  // Get state directly from store
-  const isActive = useTimerStore((s) => s.status !== "idle");
-  const displayMode = useTimerStore((s) => s.displayMode);
-  const progress = useTimerStore((s) => s.progress);
-  const isOvertime = useTimerStore((s) => s.isOvertime);
-  const remainingMs = useTimerStore((s) => s.remainingMs);
-  const timeboxTitle = useTimerStore((s) => s.timeboxTitle);
-  const status = useTimerStore((s) => s.status);
-  const setDisplayMode = useTimerStore((s) => s.setDisplayMode);
-
-  // Get actions from provider
-  const { pause, resume, stop } = useTimerActions();
-
-  const isRunning = status === "running";
-  const isPaused = status === "paused";
+  // Get state and actions from provider (FSM-based)
+  const {
+    isActive,
+    isRunning,
+    isPaused,
+    isOvertime,
+    isBreakMode,
+    isBreakRunning,
+    displayMode,
+    progress,
+    remainingMs,
+    overtimeMs,
+    breakRemainingMs,
+    durationMs,
+    timeboxTitle,
+    pause,
+    resume,
+    stop,
+    finishAndBreak,
+    skipBreak,
+    setDisplayMode,
+  } = useTimerActions();
 
   const [position, setPosition] = useState<Position>(DEFAULT_WIDGET_POSITION);
   const [isDragging, setIsDragging] = useState(false);
@@ -131,7 +137,15 @@ export function TimerWidget() {
     return overtime ? `+${formatted}` : formatted;
   };
 
-  const formattedTime = formatTimeDisplay(remainingMs, isOvertime);
+  // Calculate break progress
+  const breakDurationMs = 5 * 60 * 1000; // 5 minutes default
+  const breakProgress = breakDurationMs > 0 ? 1 - breakRemainingMs / breakDurationMs : 0;
+
+  const formattedTime = isBreakMode
+    ? formatTimeDisplay(breakRemainingMs, false)
+    : isOvertime
+      ? formatTimeDisplay(overtimeMs, true)
+      : formatTimeDisplay(remainingMs, false);
 
   // Don't render if timer is not active
   if (!isActive) {
@@ -143,6 +157,106 @@ export function TimerWidget() {
     return null;
   }
 
+  // Break mode widget
+  if (isBreakMode) {
+    return (
+      <Card
+        ref={widgetRef}
+        className={cn(
+          "fixed z-50 flex flex-col gap-3 p-4 shadow-lg",
+          "bg-emerald-950/95 border-emerald-700",
+          isDragging && "cursor-grabbing opacity-90"
+        )}
+        style={{
+          right: position.x,
+          bottom: position.y,
+          width: WIDGET_SIZE.width,
+        }}
+      >
+        {/* Drag handle */}
+        <div
+          className="absolute left-0 right-0 top-0 flex h-6 cursor-grab items-center justify-center"
+          onMouseDown={handleDragStart}
+        >
+          <GripHorizontal className="h-4 w-4 text-emerald-500/50" />
+        </div>
+
+        {/* Controls in top right */}
+        <div className="absolute right-2 top-1 flex gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-emerald-300 hover:text-emerald-100 hover:bg-emerald-800"
+            onClick={() => setDisplayMode("minimized")}
+          >
+            <Minimize2 className="h-3 w-3" />
+            <span className="sr-only">Minimize</span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-emerald-300 hover:text-emerald-100 hover:bg-emerald-800"
+            onClick={() => setDisplayMode("fullscreen")}
+          >
+            <Expand className="h-3 w-3" />
+            <span className="sr-only">Fullscreen</span>
+          </Button>
+        </div>
+
+        {/* Break content */}
+        <div className="mt-4 flex items-center gap-3">
+          {/* Break progress ring */}
+          <div className="relative flex-shrink-0" style={{ width: 64, height: 64 }}>
+            <svg className="transform -rotate-90" width={64} height={64}>
+              <circle
+                cx={32}
+                cy={32}
+                r={27}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={5}
+                className="text-emerald-900/50"
+              />
+              <circle
+                cx={32}
+                cy={32}
+                r={27}
+                fill="none"
+                stroke={BREAK_COLORS.ring}
+                strokeWidth={5}
+                strokeLinecap="round"
+                strokeDasharray={27 * 2 * Math.PI}
+                strokeDashoffset={(27 * 2 * Math.PI) - breakProgress * (27 * 2 * Math.PI)}
+                className="transition-all duration-200"
+              />
+            </svg>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <span className="text-sm font-mono font-bold text-white tabular-nums">
+                {formattedTime}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex flex-1 flex-col gap-1.5 min-w-0">
+            <div className="flex items-center gap-1.5 text-emerald-300">
+              <Coffee className="h-4 w-4 flex-shrink-0" />
+              <p className="text-sm font-medium truncate">휴식 중</p>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full border-emerald-700 text-emerald-200 hover:bg-emerald-800 hover:text-white text-xs"
+              onClick={skipBreak}
+            >
+              휴식 건너뛰기
+            </Button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  // Focus mode widget
   return (
     <Card
       ref={widgetRef}
@@ -208,9 +322,11 @@ export function TimerWidget() {
           <TimerControls
             isRunning={isRunning}
             isPaused={isPaused}
+            isOvertime={isOvertime}
             onPause={pause}
             onResume={resume}
             onStop={stop}
+            onFinishAndBreak={finishAndBreak}
             size="sm"
           />
         </div>

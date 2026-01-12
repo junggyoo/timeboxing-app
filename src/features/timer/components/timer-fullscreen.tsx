@@ -7,27 +7,31 @@ import { cn } from "@/lib/utils";
 import { TimerProgressRing } from "./timer-progress-ring";
 import { TimerDisplay } from "./timer-display";
 import { TimerControls } from "./timer-controls";
-import { useTimerStore } from "../store/timer-store";
 import { useTimerActions } from "./timer-provider";
 import { formatTime } from "../lib/format-time";
 
 export function TimerFullscreen() {
-  // Get state directly from store
-  const isActive = useTimerStore((s) => s.status !== "idle");
-  const displayMode = useTimerStore((s) => s.displayMode);
-  const progress = useTimerStore((s) => s.progress);
-  const isOvertime = useTimerStore((s) => s.isOvertime);
-  const remainingMs = useTimerStore((s) => s.remainingMs);
-  const timeboxTitle = useTimerStore((s) => s.timeboxTitle);
-  const status = useTimerStore((s) => s.status);
-  const setDisplayMode = useTimerStore((s) => s.setDisplayMode);
+  // Get state and actions from provider (FSM-based)
+  const {
+    isActive,
+    isRunning,
+    isPaused,
+    isOvertime,
+    displayMode,
+    progress,
+    remainingMs,
+    overtimeMs,
+    timeboxTitle,
+    pause,
+    resume,
+    stop,
+    finishAndBreak,
+    setDisplayMode,
+  } = useTimerActions();
 
-  // Get actions from provider
-  const { pause, resume, stop } = useTimerActions();
-
-  const isRunning = status === "running";
-  const isPaused = status === "paused";
-  const formattedTime = formatTime(remainingMs, isOvertime);
+  const formattedTime = isOvertime
+    ? formatTime(overtimeMs, true)
+    : formatTime(remainingMs, false);
 
   const handleClose = useCallback(() => {
     setDisplayMode("widget");
@@ -93,9 +97,11 @@ export function TimerFullscreen() {
         <TimerControls
           isRunning={isRunning}
           isPaused={isPaused}
+          isOvertime={isOvertime}
           onPause={pause}
           onResume={resume}
           onStop={stop}
+          onFinishAndBreak={finishAndBreak}
           size="lg"
         />
 

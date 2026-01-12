@@ -1,5 +1,14 @@
 export type TimerStatus = "idle" | "running" | "paused";
 
+// Re-export FSM types
+export type {
+  FsmState,
+  FsmEvent,
+  FsmContext,
+  FsmStore,
+  TransitionResult,
+} from "./types/fsm-types";
+
 export type DisplayMode = "widget" | "fullscreen" | "minimized";
 
 export type BreakMode = "idle" | "focus" | "break";
