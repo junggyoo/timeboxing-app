@@ -8,8 +8,11 @@ import { Plus } from "lucide-react";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 import { HourGridBackground } from "./hour-grid-background";
 import { HourBlock } from "./hour-block";
-import { HOUR_HEIGHT, TIME_LABEL_WIDTH, MINUTE_GRID, ROW_RIGHT_PADDING } from "./constants";
-import { getMinuteFromPosition, formatTime, calculateEndTime } from "./use-block-position";
+import { HOUR_HEIGHT, TIME_LABEL_WIDTH, ROW_RIGHT_PADDING } from "./constants";
+import { getMinuteFromPosition, formatTime } from "./use-block-position";
+import { useDragState } from "../drag-state-context";
+import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
+import { useShallow } from "zustand/react/shallow";
 
 type HourRowProps = {
   hour: number;
@@ -28,11 +31,29 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
   const [createMinute, setCreateMinute] = useState(0);
   const [createTitle, setCreateTitle] = useState("");
 
+  // Drag state for pointer tracking
+  const { targetHour, targetMinute, isCollision, isDragging, setTargetPosition } = useDragState();
+  const timeBox = useDashboardStore(useShallow((state) => state.timeBox));
+
   // Droppable for drag-and-drop from other panels
   const displayHour = hour >= 24 ? hour - 24 : hour;
   const { setNodeRef, isOver } = useDroppable({
     id: `timeline-hour-${displayHour.toString().padStart(2, "0")}`,
   });
+
+  // Track pointer position when dragging over this row
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!isDragging || !rowRef.current) return;
+      const rect = rowRef.current.getBoundingClientRect();
+      const minute = getMinuteFromPosition(e.clientX, rect.left, rect.width);
+      setTargetPosition(hour, minute, timeBox);
+    },
+    [isDragging, hour, timeBox, setTargetPosition]
+  );
+
+  // Check if this row is the current target
+  const isTargetRow = targetHour === hour;
 
   const prefix = hour >= 24 ? "(+1) " : "";
   const hourLabel = `${prefix}${displayHour.toString().padStart(2, "0")}:00`;
@@ -86,10 +107,8 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
     <div
       ref={setNodeRef}
       style={{ height: HOUR_HEIGHT }}
-      className={cn(
-        "relative flex border-b transition-colors",
-        isOver && "bg-primary/10"
-      )}
+      className="relative flex border-b transition-colors"
+      onPointerMove={handlePointerMove}
     >
       {/* Time label */}
       <div
@@ -140,7 +159,7 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
           )}
 
           {/* Hover hint (hidden when creating or has items) */}
-          {!isCreating && items.length === 0 && (
+          {!isCreating && items.length === 0 && !isOver && (
             <div className="flex h-full items-center justify-center opacity-0 transition-opacity group-hover:opacity-100 hover:opacity-100">
               <Plus className="mr-1 h-3 w-3 text-muted-foreground/50" />
               <span className="text-xs text-muted-foreground/50">
@@ -149,11 +168,20 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
             </div>
           )}
 
-          {/* Drop hint */}
-          {isOver && (
-            <div className="flex h-full items-center pl-2 text-xs text-muted-foreground">
-              Drop here
-            </div>
+          {/* Drop slot indicator - shows precise 30-min slot with collision state */}
+          {isOver && isTargetRow && targetMinute !== null && (
+            <div
+              className={cn(
+                "absolute inset-y-1 rounded pointer-events-none transition-all z-5",
+                isCollision
+                  ? "bg-destructive/20 border border-destructive/50"
+                  : "bg-primary/20 border border-primary/50"
+              )}
+              style={{
+                left: `${(targetMinute / 60) * 100}%`,
+                width: `${(30 / 60) * 100}%`,
+              }}
+            />
           )}
         </div>
       </div>

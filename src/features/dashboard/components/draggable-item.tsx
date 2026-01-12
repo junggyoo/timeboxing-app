@@ -50,6 +50,7 @@ export function DraggableItem({
   return (
     <div
       ref={setNodeRef}
+      data-item-id={item.id}
       className={cn(
         "group flex items-center gap-1",
         isDragging && "opacity-50"
