@@ -9,6 +9,7 @@ import type {
   SectionKey,
   TimeBoxItem,
 } from "../types";
+import { getDistinctColorIndex } from "../utils/color-utils";
 
 type PlannerState = {
   selectedDate: string;
@@ -188,12 +189,19 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
     }),
 
   addTimeBox: (item) =>
-    set((state) => ({
-      timeBox: [
-        ...state.timeBox,
-        { ...item, id: crypto.randomUUID() },
-      ],
-    })),
+    set((state) => {
+      const colorIndex = item.colorIndex ?? getDistinctColorIndex(
+        state.timeBox,
+        item.startAt,
+        item.durationMin
+      );
+      return {
+        timeBox: [
+          ...state.timeBox,
+          { ...item, id: crypto.randomUUID(), colorIndex },
+        ],
+      };
+    }),
 
   updateMemo: (content) =>
     set((state) => {
@@ -227,6 +235,9 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         return state; // Reject drop if there's overlap
       }
 
+      // Get a distinct color that doesn't match adjacent tasks
+      const colorIndex = getDistinctColorIndex(state.timeBox, startAt, durationMin);
+
       const newTimeBox: TimeBoxItem = {
         id: crypto.randomUUID(),
         title: item.title,
@@ -236,6 +247,7 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         status: "scheduled",
         sourceItemId: itemId,
         sourceSection: sourceSection,
+        colorIndex,
       };
 
       return {

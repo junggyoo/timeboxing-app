@@ -13,27 +13,13 @@ import { useBlockPosition } from "./use-block-position";
 import { useHorizontalResize } from "./use-horizontal-resize";
 import { useHorizontalDrag } from "./use-horizontal-drag";
 import { TimelineTooltip } from "./timeline-tooltip";
+import { getTaskColorByIndex, TASK_COLORS } from "@/features/dashboard/utils/color-utils";
 
 /**
- * Pastel color palette for task blocks.
- * Colors are designed to be distinct yet harmonious.
- */
-const TASK_COLORS = [
-  { bg: "bg-blue-100 dark:bg-blue-900/30", border: "border-blue-300 dark:border-blue-700" },
-  { bg: "bg-green-100 dark:bg-green-900/30", border: "border-green-300 dark:border-green-700" },
-  { bg: "bg-purple-100 dark:bg-purple-900/30", border: "border-purple-300 dark:border-purple-700" },
-  { bg: "bg-amber-100 dark:bg-amber-900/30", border: "border-amber-300 dark:border-amber-700" },
-  { bg: "bg-pink-100 dark:bg-pink-900/30", border: "border-pink-300 dark:border-pink-700" },
-  { bg: "bg-cyan-100 dark:bg-cyan-900/30", border: "border-cyan-300 dark:border-cyan-700" },
-  { bg: "bg-orange-100 dark:bg-orange-900/30", border: "border-orange-300 dark:border-orange-700" },
-  { bg: "bg-indigo-100 dark:bg-indigo-900/30", border: "border-indigo-300 dark:border-indigo-700" },
-];
-
-/**
- * Get a consistent color for a task based on its ID.
+ * Fallback: Get a consistent color for a task based on its ID (for legacy tasks without colorIndex).
  * Uses hash to ensure same task always gets same color.
  */
-function getTaskColor(id: string) {
+function getTaskColorByHash(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) {
     hash = ((hash << 5) - hash) + id.charCodeAt(i);
@@ -80,8 +66,13 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
   const { left, width, isStartBlock, isContinuation, continuesNext } =
     useBlockPosition(item, rowHour);
 
-  // Get consistent color for this task
-  const taskColor = useMemo(() => getTaskColor(item.id), [item.id]);
+  // Get color for this task - use stored colorIndex if available, otherwise fallback to hash-based
+  const taskColor = useMemo(() => {
+    if (item.colorIndex !== undefined) {
+      return getTaskColorByIndex(item.colorIndex);
+    }
+    return getTaskColorByHash(item.id);
+  }, [item.id, item.colorIndex]);
 
   // Horizontal resize hook
   const { isResizing, handleResizeStart } = useHorizontalResize({

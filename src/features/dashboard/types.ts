@@ -30,6 +30,7 @@ export type TimeBoxItem = {
   sourceItemId?: string;
   sourceSection?: ItemSectionKey;
   actualDurationMin?: number;
+  colorIndex?: number;
 };
 
 export type MemoItem = {
