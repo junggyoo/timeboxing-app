@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "next dev --turbopack",
+		"dev": "NODE_OPTIONS='--max-http-header-size=16384' next dev --turbopack",
 		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
@@ -75,6 +75,7 @@
 		"@vitejs/plugin-react": "^5.0.4",
 		"@vitest/coverage-v8": "^3.2.4",
 		"@vitest/ui": "^3.2.4",
+		"baseline-browser-mapping": "^2.9.14",
 		"dotenv-cli": "^10.0.0",
 		"eslint": "^9",
 		"eslint-config-next": "15.1.0",

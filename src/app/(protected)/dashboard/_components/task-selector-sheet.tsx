@@ -96,7 +96,6 @@ type HideScheduledToggleProps = {
 // ============================================================================
 
 const SECTIONS: SectionConfig[] = [
-  { key: "brainDump", title: "Brain Dump", icon: Brain },
   { key: "priorities", title: "Priorities", icon: Target },
   { key: "urgent", title: "Urgent Work", icon: Zap },
   { key: "selfDev", title: "Self Development", icon: Sparkles },
@@ -105,7 +104,6 @@ const SECTIONS: SectionConfig[] = [
 
 const FILTER_OPTIONS: { key: FilterCategory; label: string }[] = [
   { key: "all", label: "All" },
-  { key: "brainDump", label: "Brain Dump" },
   { key: "priorities", label: "Priorities" },
   { key: "urgent", label: "Urgent" },
   { key: "selfDev", label: "Self-Dev" },
@@ -338,7 +336,6 @@ export function TaskSelectorSheet({
 
   // Store access
   const {
-    brainDump,
     priorities,
     urgent,
     selfDev,
@@ -348,7 +345,6 @@ export function TaskSelectorSheet({
     getScheduledSourceIds,
   } = useDashboardStore(
     useShallow((state) => ({
-      brainDump: state.brainDump,
       priorities: state.priorities,
       urgent: state.urgent,
       selfDev: state.selfDev,
@@ -363,7 +359,6 @@ export function TaskSelectorSheet({
 
   // Raw section data
   const sectionData: Record<ItemSectionKey, BaseItem[]> = {
-    brainDump,
     priorities,
     urgent,
     selfDev,
@@ -384,7 +379,6 @@ export function TaskSelectorSheet({
 
     return result;
   }, [
-    brainDump,
     priorities,
     urgent,
     selfDev,
@@ -401,7 +395,6 @@ export function TaskSelectorSheet({
     );
     return {
       all,
-      brainDump: processedSectionData.brainDump.length,
       priorities: processedSectionData.priorities.length,
       urgent: processedSectionData.urgent.length,
       selfDev: processedSectionData.selfDev.length,

@@ -19,24 +19,18 @@ export const useDashboardActions = () => {
       moveItem: state.moveItem,
       addTimeBox: state.addTimeBox,
       updateMemo: state.updateMemo,
+      updateBrainDump: state.updateBrainDump,
     }))
   );
 };
 
 export const useBrainDump = () => {
-  const items = useDashboardStore(useShallow((state) => state.brainDump));
-  const { addItem, editItem, removeItem, toggleDone, moveItem } =
-    useDashboardActions();
+  const content = useDashboardStore(useShallow((state) => state.brainDump));
+  const { updateBrainDump } = useDashboardActions();
 
   return {
-    items,
-    add: (title: string) => addItem("brainDump", title),
-    edit: (id: string, title: string) =>
-      editItem("brainDump", id, { title }),
-    remove: (id: string) => removeItem("brainDump", id),
-    toggle: (id: string) => toggleDone("brainDump", id),
-    promoteTo: (id: string, target: ItemSectionKey) =>
-      moveItem("brainDump", target, id),
+    content,
+    update: updateBrainDump,
   };
 };
 

@@ -7,7 +7,7 @@ export type SectionKey =
   | "timeBox"
   | "memo";
 
-export type ItemSectionKey = Exclude<SectionKey, "timeBox" | "memo">;
+export type ItemSectionKey = Exclude<SectionKey, "timeBox" | "memo" | "brainDump">;
 
 export type BaseItem = {
   id: string;
@@ -40,7 +40,7 @@ export type MemoItem = {
 };
 
 export type DashboardState = {
-  brainDump: BaseItem[];
+  brainDump: string;
   priorities: BaseItem[];
   urgent: BaseItem[];
   selfDev: BaseItem[];

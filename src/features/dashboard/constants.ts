@@ -15,26 +15,8 @@ export const SECTION_CONFIGS: SectionConfig[] = [
   { key: "memo", title: "Memo", icon: "StickyNote", gridSpan: 4 },
 ];
 
-export const SAMPLE_BRAIN_DUMP: BaseItem[] = [
-  {
-    id: "bd-1",
-    title: "프로젝트 아이디어 정리하기",
-    isDone: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "bd-2",
-    title: "다음 주 회의 안건 준비",
-    isDone: false,
-    createdAt: new Date().toISOString(),
-  },
-  {
-    id: "bd-3",
-    title: "디자인 시스템 문서 검토",
-    isDone: false,
-    createdAt: new Date().toISOString(),
-  },
-];
+export const SAMPLE_BRAIN_DUMP: string =
+  "프로젝트 아이디어 정리하기\n다음 주 회의 안건 준비\n디자인 시스템 문서 검토\n\n새로운 기능 아이디어:\n- 사용자 피드백 대시보드\n- 자동 리포트 생성";
 
 export const SAMPLE_PRIORITIES: BaseItem[] = [
   {

@@ -38,6 +38,7 @@ type DashboardActions = {
   moveItem: (from: ItemSectionKey, to: ItemSectionKey, id: string) => void;
   addTimeBox: (item: Omit<TimeBoxItem, "id">) => void;
   updateMemo: (content: string) => void;
+  updateBrainDump: (content: string) => void;
   assignToTimeline: (
     itemId: string,
     sourceSection: ItemSectionKey,
@@ -109,7 +110,7 @@ const checkTimeBlockOverlap = (
 };
 
 export const useDashboardStore = create<DashboardStore>((set, get) => ({
-  brainDump: [],
+  brainDump: "",
   priorities: [],
   urgent: [],
   selfDev: [],
@@ -222,6 +223,8 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
         ),
       };
     }),
+
+  updateBrainDump: (content) => set({ brainDump: content }),
 
   assignToTimeline: (itemId, sourceSection, startAt, durationMin = 30) =>
     set((state) => {

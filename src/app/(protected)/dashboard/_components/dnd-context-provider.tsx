@@ -119,7 +119,6 @@ function DndContextInner({ children }: DndContextProviderProps) {
 
       // 섹션에 드롭
       const validSections: ItemSectionKey[] = [
-        "brainDump",
         "priorities",
         "urgent",
         "selfDev",
