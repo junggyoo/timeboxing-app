@@ -32,7 +32,7 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
   const [createTitle, setCreateTitle] = useState("");
 
   // Drag state for pointer tracking
-  const { targetHour, targetMinute, isCollision, isDragging, setTargetPosition } = useDragState();
+  const { targetHour, targetMinute, isCollision, isDragging, setTargetPosition, wasJustResizing } = useDragState();
   const timeBox = useDashboardStore(useShallow((state) => state.timeBox));
 
   // Droppable for drag-and-drop from other panels
@@ -62,6 +62,8 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
   const handleRowClick = useCallback(
     (e: React.MouseEvent) => {
       if (isCreating) return;
+      // Ignore clicks that happen right after a resize operation
+      if (wasJustResizing()) return;
 
       const row = rowRef.current;
       if (!row) return;
@@ -72,7 +74,7 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
       setCreateMinute(minute);
       setIsCreating(true);
     },
-    [isCreating]
+    [isCreating, wasJustResizing]
   );
 
   const handleCreateKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

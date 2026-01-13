@@ -11,8 +11,10 @@ import type { TimeBoxItem } from "@/features/dashboard/types";
 import { useShallow } from "zustand/react/shallow";
 import { useBlockPosition } from "./use-block-position";
 import { useHorizontalResize } from "./use-horizontal-resize";
+import { useHorizontalLeftResize } from "./use-horizontal-left-resize";
 import { useHorizontalDrag } from "./use-horizontal-drag";
 import { TimelineTooltip } from "./timeline-tooltip";
+import { useDragState } from "../drag-state-context";
 import { getTaskColorByIndex, TASK_COLORS } from "@/features/dashboard/utils/color-utils";
 
 /**
@@ -52,15 +54,19 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
   const isTimerRunning = isTimerActiveForThis && status === "running";
   const isTimerPaused = isTimerActiveForThis && status === "paused";
 
-  const { editItem, removeItem, updateTimeBlockDuration, updateTimeBlockStartTime } =
+  const { editItem, removeItem, updateTimeBlockDuration, updateTimeBlockStartTime, updateTimeBlockLeftResize } =
     useDashboardStore(
       useShallow((state) => ({
         editItem: state.editItem,
         removeItem: state.removeItem,
         updateTimeBlockDuration: state.updateTimeBlockDuration,
         updateTimeBlockStartTime: state.updateTimeBlockStartTime,
+        updateTimeBlockLeftResize: state.updateTimeBlockLeftResize,
       }))
     );
+
+  // Get resize state setter from context to prevent accidental clicks after resize
+  const { setIsResizing } = useDragState();
 
   // Calculate horizontal position
   const { left, width, isStartBlock, isContinuation, continuesNext } =
@@ -74,11 +80,20 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
     return getTaskColorByHash(item.id);
   }, [item.id, item.colorIndex]);
 
-  // Horizontal resize hook
+  // Horizontal resize hook (right side)
   const { isResizing, handleResizeStart } = useHorizontalResize({
     item,
     rowRef,
     onDurationChange: updateTimeBlockDuration,
+    onResizeStateChange: setIsResizing,
+  });
+
+  // Horizontal left resize hook (left side)
+  const { isLeftResizing, handleLeftResizeStart } = useHorizontalLeftResize({
+    item,
+    rowRef,
+    onLeftResize: updateTimeBlockLeftResize,
+    onResizeStateChange: setIsResizing,
   });
 
   // Horizontal drag hook (only for start blocks)
@@ -120,8 +135,9 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
     setEditTitle(item.title);
   }, [item.title]);
 
-  // Whether to show resize handle (only when block ends in this row)
-  const showResizeHandle = !continuesNext;
+  // Whether to show resize handles
+  const showResizeHandle = !continuesNext; // Right handle: only when block ends in this row
+  const showLeftResizeHandle = isStartBlock; // Left handle: only on start blocks
 
   // Timer control handlers
   const handlePlayClick = useCallback(
@@ -155,7 +171,7 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           left: `${left}%`,
           width: `${width}%`,
           // Hover elevation: boost z-index when hovered to bring block and floating buttons to front
-          zIndex: isHovered || isResizing || isDragging ? 50 : 1,
+          zIndex: isHovered || isResizing || isLeftResizing || isDragging ? 50 : 1,
         }}
         className={cn(
           "group absolute bottom-1 top-1 rounded border-2 px-1.5 py-0.5",
@@ -170,7 +186,7 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           // Timer paused state - amber border
           isTimerPaused && "border-amber-500 border-[3px] shadow-md shadow-amber-500/20",
           // Drag/resize states
-          (isResizing || isDragging) && "select-none ring-2 ring-primary/50",
+          (isResizing || isLeftResizing || isDragging) && "select-none ring-2 ring-primary/50",
           // Visual connection for multi-hour tasks
           continuesNext && "rounded-r-none border-r-0",
           isContinuation && "rounded-l-none border-l-0",
@@ -338,6 +354,26 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           </>
         )}
         </div>
+
+        {/* Left resize handle - inside the block at left edge */}
+        {showLeftResizeHandle && (
+          <div
+            className={cn(
+              "absolute -bottom-0.5 -left-0.5 -top-0.5 z-20 w-3 cursor-ew-resize",
+              "flex items-center justify-center rounded-l",
+              "bg-transparent hover:bg-primary/20",
+              "opacity-0 transition-all group-hover:opacity-100",
+              isLeftResizing && "opacity-100 bg-primary/30"
+            )}
+            onMouseDown={(e) => {
+              e.stopPropagation();
+              handleLeftResizeStart(e);
+            }}
+          >
+            {/* Visual grip indicator */}
+            <GripVertical className="h-4 w-3 text-muted-foreground/60" />
+          </div>
+        )}
 
         {/* Resize handle - inside the block at right edge */}
         {showResizeHandle && (

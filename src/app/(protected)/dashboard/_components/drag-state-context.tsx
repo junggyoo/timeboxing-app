@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react";
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 
 type DragState = {
@@ -11,6 +11,10 @@ type DragState = {
   setTargetPosition: (hour: number, minute: number, timeBox: TimeBoxItem[]) => void;
   clearTarget: () => void;
   setIsDragging: (isDragging: boolean) => void;
+  // Resize state tracking to prevent accidental clicks after resize
+  isResizing: boolean;
+  setIsResizing: (isResizing: boolean) => void;
+  wasJustResizing: () => boolean;
 };
 
 const DragStateContext = createContext<DragState | null>(null);
@@ -51,11 +55,30 @@ type DragStateProviderProps = {
   children: ReactNode;
 };
 
+// Threshold in ms to consider a click as "just after resize"
+const RESIZE_CLICK_THRESHOLD = 150;
+
 export function DragStateProvider({ children }: DragStateProviderProps) {
   const [targetHour, setTargetHour] = useState<number | null>(null);
   const [targetMinute, setTargetMinute] = useState<number | null>(null);
   const [isCollision, setIsCollision] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [isResizing, setIsResizingState] = useState(false);
+  const lastResizeEndTimeRef = useRef<number>(0);
+
+  // Track resize state and record end time
+  const setIsResizing = useCallback((resizing: boolean) => {
+    setIsResizingState(resizing);
+    if (!resizing) {
+      // Record when resize ended
+      lastResizeEndTimeRef.current = Date.now();
+    }
+  }, []);
+
+  // Check if a resize just ended (within threshold)
+  const wasJustResizing = useCallback(() => {
+    return Date.now() - lastResizeEndTimeRef.current < RESIZE_CLICK_THRESHOLD;
+  }, []);
 
   const setTargetPosition = useCallback(
     (hour: number, minute: number, timeBox: TimeBoxItem[]) => {
@@ -82,6 +105,9 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
         setTargetPosition,
         clearTarget,
         setIsDragging,
+        isResizing,
+        setIsResizing,
+        wasJustResizing,
       }}
     >
       {children}

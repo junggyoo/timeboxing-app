@@ -47,6 +47,7 @@ type DashboardActions = {
   ) => void;
   updateTimeBlockDuration: (id: string, durationMin: number) => void;
   updateTimeBlockStartTime: (id: string, startAt: string) => void;
+  updateTimeBlockLeftResize: (id: string, startAt: string, durationMin: number) => void;
 };
 
 type DashboardSelectors = {
@@ -298,6 +299,30 @@ export const useDashboardStore = create<DashboardStore>((set, get) => ({
                 ...item,
                 startAt,
                 endAt: calculateEndTime(startAt, item.durationMin),
+              }
+            : item
+        ),
+      };
+    }),
+
+  updateTimeBlockLeftResize: (id, startAt, durationMin) =>
+    set((state) => {
+      const currentItem = state.timeBox.find((item) => item.id === id);
+      if (!currentItem) return state;
+
+      // Check for overlap with other time blocks (exclude self)
+      if (checkTimeBlockOverlap(state.timeBox, startAt, durationMin, id)) {
+        return state; // Reject resize if there's overlap
+      }
+
+      return {
+        timeBox: state.timeBox.map((item) =>
+          item.id === id
+            ? {
+                ...item,
+                startAt,
+                durationMin,
+                // endAt stays the same (left resize keeps end time fixed)
               }
             : item
         ),

@@ -7,6 +7,7 @@ type UseHorizontalResizeOptions = {
   item: TimeBoxItem;
   rowRef: RefObject<HTMLDivElement | null>;
   onDurationChange: (id: string, durationMin: number) => void;
+  onResizeStateChange?: (isResizing: boolean) => void;
 };
 
 type UseHorizontalResizeReturn = {
@@ -24,6 +25,7 @@ export function useHorizontalResize({
   item,
   rowRef,
   onDurationChange,
+  onResizeStateChange,
 }: UseHorizontalResizeOptions): UseHorizontalResizeReturn {
   const [isResizing, setIsResizing] = useState(false);
 
@@ -32,6 +34,7 @@ export function useHorizontalResize({
       e.preventDefault();
       e.stopPropagation();
       setIsResizing(true);
+      onResizeStateChange?.(true);
 
       const rowWidth = rowRef.current?.offsetWidth ?? 1;
       const startX = e.clientX;
@@ -64,6 +67,7 @@ export function useHorizontalResize({
 
       const handleMouseUp = () => {
         setIsResizing(false);
+        onResizeStateChange?.(false);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
@@ -71,7 +75,7 @@ export function useHorizontalResize({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [item.id, item.durationMin, rowRef, onDurationChange]
+    [item.id, item.durationMin, rowRef, onDurationChange, onResizeStateChange]
   );
 
   return { isResizing, handleResizeStart };
