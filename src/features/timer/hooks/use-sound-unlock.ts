@@ -43,25 +43,25 @@ export function useSoundUnlock() {
   useEffect(() => {
     if (isUnlocked) return;
 
-    const handleInteraction = async () => {
-      await getSoundManager().unlock();
-      setIsUnlocked(getSoundManager().unlocked);
-
-      // Remove listeners after successful unlock
+    const removeListeners = () => {
       document.removeEventListener("click", handleInteraction);
       document.removeEventListener("touchstart", handleInteraction);
       document.removeEventListener("keydown", handleInteraction);
+    };
+
+    const handleInteraction = async () => {
+      // Remove listeners immediately to prevent multiple calls
+      removeListeners();
+
+      await getSoundManager().unlock();
+      setIsUnlocked(getSoundManager().unlocked);
     };
 
     document.addEventListener("click", handleInteraction, { passive: true });
     document.addEventListener("touchstart", handleInteraction, { passive: true });
     document.addEventListener("keydown", handleInteraction, { passive: true });
 
-    return () => {
-      document.removeEventListener("click", handleInteraction);
-      document.removeEventListener("touchstart", handleInteraction);
-      document.removeEventListener("keydown", handleInteraction);
-    };
+    return removeListeners;
   }, [isUnlocked]);
 
   return { isUnlocked, unlock };

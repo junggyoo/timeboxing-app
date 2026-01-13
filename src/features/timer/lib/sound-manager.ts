@@ -13,6 +13,7 @@ class SoundManager {
   private static instance: SoundManager;
   private audioContext: AudioContext | null = null;
   private isUnlocked = false;
+  private unlockPromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -37,6 +38,21 @@ class SoundManager {
   async unlock(): Promise<void> {
     if (this.isUnlocked) return;
 
+    // Prevent concurrent unlock attempts
+    if (this.unlockPromise) {
+      return this.unlockPromise;
+    }
+
+    this.unlockPromise = this.performUnlock();
+
+    try {
+      await this.unlockPromise;
+    } finally {
+      this.unlockPromise = null;
+    }
+  }
+
+  private async performUnlock(): Promise<void> {
     try {
       // Create AudioContext if not exists
       if (!this.audioContext) {
@@ -56,8 +72,9 @@ class SoundManager {
       source.start();
 
       this.isUnlocked = true;
-    } catch (error) {
-      console.warn("Failed to unlock AudioContext:", error);
+    } catch {
+      // Silently ignore - this is expected on initial page load
+      // AudioContext will be properly unlocked on user interaction
     }
   }
 
