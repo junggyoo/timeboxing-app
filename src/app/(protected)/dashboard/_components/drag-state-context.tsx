@@ -43,6 +43,8 @@ type DragState = {
   isResizing: boolean;
   setIsResizing: (isResizing: boolean) => void;
   wasJustResizing: () => boolean;
+  // Block drag state tracking to prevent accidental clicks after drag
+  wasJustBlockDragging: () => boolean;
   // Block drag state for timeline block repositioning
   blockDrag: BlockDragState;
   startBlockDrag: (blockId: string, startAt: string, durationMin: number) => void;
@@ -109,6 +111,7 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizingState] = useState(false);
   const lastResizeEndTimeRef = useRef<number>(0);
+  const lastBlockDragEndTimeRef = useRef<number>(0);
 
   // Block drag state
   const [blockDrag, setBlockDrag] = useState<BlockDragState>({
@@ -134,6 +137,11 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
   // Check if a resize just ended (within threshold)
   const wasJustResizing = useCallback(() => {
     return Date.now() - lastResizeEndTimeRef.current < RESIZE_CLICK_THRESHOLD;
+  }, []);
+
+  // Check if a block drag just ended (within threshold)
+  const wasJustBlockDragging = useCallback(() => {
+    return Date.now() - lastBlockDragEndTimeRef.current < RESIZE_CLICK_THRESHOLD;
   }, []);
 
   const setTargetPosition = useCallback(
@@ -210,6 +218,8 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
   }, [blockDrag.targetHour, blockDrag.targetMinute, blockDrag.isCollision]);
 
   const clearBlockDrag = useCallback(() => {
+    // Record when block drag ended
+    lastBlockDragEndTimeRef.current = Date.now();
     setBlockDrag({
       blockId: null,
       originalStartAt: null,
@@ -235,6 +245,7 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
         isResizing,
         setIsResizing,
         wasJustResizing,
+        wasJustBlockDragging,
         blockDrag,
         startBlockDrag,
         startBlockDragWithGhost,

@@ -17,7 +17,7 @@ import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import { useShallow } from "zustand/react/shallow";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 import { HourRow } from "./hour-row";
-import { MIN_DURATION } from "./constants";
+import { DEFAULT_DURATION } from "./constants";
 import { calculateEndTime, getTaskHourSpan } from "./use-block-position";
 
 /**
@@ -123,8 +123,8 @@ export function HorizontalTimeline({ fullHeight }: HorizontalTimelineProps) {
       addTimeBox({
         title,
         startAt,
-        endAt: calculateEndTime(startAt, MIN_DURATION),
-        durationMin: MIN_DURATION,
+        endAt: calculateEndTime(startAt, DEFAULT_DURATION),
+        durationMin: DEFAULT_DURATION,
         status: "scheduled",
       });
     },

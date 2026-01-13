@@ -14,6 +14,9 @@ export function getHoursToDisplay(startHour: number): number {
 /** Minimum task duration in minutes */
 export const MIN_DURATION = 10;
 
+/** Default task duration in minutes for new timeboxes */
+export const DEFAULT_DURATION = 30;
+
 /** Breakpoint for switching between horizontal (desktop) and vertical (mobile) layout */
 export const DESKTOP_BREAKPOINT = 1024;
 
