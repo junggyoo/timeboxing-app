@@ -3,6 +3,16 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 
+// Block drag state for drag-and-drop within timeline
+type BlockDragState = {
+  blockId: string | null;
+  originalStartAt: string | null;
+  durationMin: number;
+  targetHour: number | null;
+  targetMinute: number | null;
+  isCollision: boolean;
+};
+
 type DragState = {
   targetHour: number | null;
   targetMinute: number | null;
@@ -15,6 +25,12 @@ type DragState = {
   isResizing: boolean;
   setIsResizing: (isResizing: boolean) => void;
   wasJustResizing: () => boolean;
+  // Block drag state for timeline block repositioning
+  blockDrag: BlockDragState;
+  startBlockDrag: (blockId: string, startAt: string, durationMin: number) => void;
+  updateBlockDragTarget: (hour: number, minute: number, timeBox: TimeBoxItem[], excludeBlockId: string) => void;
+  endBlockDrag: () => { targetHour: number | null; targetMinute: number | null; isCollision: boolean };
+  clearBlockDrag: () => void;
 };
 
 const DragStateContext = createContext<DragState | null>(null);
@@ -39,12 +55,15 @@ function checkCollision(
   timeBox: TimeBoxItem[],
   hour: number,
   minute: number,
-  duration: number = DEFAULT_DURATION
+  duration: number = DEFAULT_DURATION,
+  excludeBlockId?: string
 ): boolean {
   const newStartMinutes = hour * 60 + minute;
   const newEndMinutes = newStartMinutes + duration;
 
   return timeBox.some((item) => {
+    // Skip the block being dragged
+    if (excludeBlockId && item.id === excludeBlockId) return false;
     const existingStart = timeToMinutes(item.startAt);
     const existingEnd = existingStart + item.durationMin;
     return hasTimeOverlap(newStartMinutes, newEndMinutes, existingStart, existingEnd);
@@ -65,6 +84,16 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizingState] = useState(false);
   const lastResizeEndTimeRef = useRef<number>(0);
+
+  // Block drag state
+  const [blockDrag, setBlockDrag] = useState<BlockDragState>({
+    blockId: null,
+    originalStartAt: null,
+    durationMin: 30,
+    targetHour: null,
+    targetMinute: null,
+    isCollision: false,
+  });
 
   // Track resize state and record end time
   const setIsResizing = useCallback((resizing: boolean) => {
@@ -95,6 +124,50 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
     setIsCollision(false);
   }, []);
 
+  // Block drag functions
+  const startBlockDrag = useCallback((blockId: string, startAt: string, durationMin: number) => {
+    setBlockDrag({
+      blockId,
+      originalStartAt: startAt,
+      durationMin,
+      targetHour: null,
+      targetMinute: null,
+      isCollision: false,
+    });
+  }, []);
+
+  const updateBlockDragTarget = useCallback(
+    (hour: number, minute: number, timeBox: TimeBoxItem[], excludeBlockId: string) => {
+      setBlockDrag((prev) => ({
+        ...prev,
+        targetHour: hour,
+        targetMinute: minute,
+        isCollision: checkCollision(timeBox, hour, minute, prev.durationMin, excludeBlockId),
+      }));
+    },
+    []
+  );
+
+  const endBlockDrag = useCallback(() => {
+    const result = {
+      targetHour: blockDrag.targetHour,
+      targetMinute: blockDrag.targetMinute,
+      isCollision: blockDrag.isCollision,
+    };
+    return result;
+  }, [blockDrag.targetHour, blockDrag.targetMinute, blockDrag.isCollision]);
+
+  const clearBlockDrag = useCallback(() => {
+    setBlockDrag({
+      blockId: null,
+      originalStartAt: null,
+      durationMin: 30,
+      targetHour: null,
+      targetMinute: null,
+      isCollision: false,
+    });
+  }, []);
+
   return (
     <DragStateContext.Provider
       value={{
@@ -108,6 +181,11 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
         isResizing,
         setIsResizing,
         wasJustResizing,
+        blockDrag,
+        startBlockDrag,
+        updateBlockDragTarget,
+        endBlockDrag,
+        clearBlockDrag,
       }}
     >
       {children}

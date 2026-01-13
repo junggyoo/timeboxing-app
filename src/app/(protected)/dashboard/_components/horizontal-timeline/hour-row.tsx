@@ -32,7 +32,7 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
   const [createTitle, setCreateTitle] = useState("");
 
   // Drag state for pointer tracking
-  const { targetHour, targetMinute, isCollision, isDragging, setTargetPosition, wasJustResizing } = useDragState();
+  const { targetHour, targetMinute, isCollision, isDragging, setTargetPosition, wasJustResizing, blockDrag } = useDragState();
   const timeBox = useDashboardStore(useShallow((state) => state.timeBox));
 
   // Droppable for drag-and-drop from other panels
@@ -52,8 +52,11 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
     [isDragging, hour, timeBox, setTargetPosition]
   );
 
-  // Check if this row is the current target
+  // Check if this row is the current target (for panel drag)
   const isTargetRow = targetHour === hour;
+
+  // Check if this row is the target for block drag
+  const isBlockDragTargetRow = blockDrag.blockId !== null && blockDrag.targetHour === hour;
 
   const prefix = hour >= 24 ? "(+1) " : "";
   const hourLabel = `${prefix}${displayHour.toString().padStart(2, "0")}:00`;
@@ -170,7 +173,7 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
             </div>
           )}
 
-          {/* Drop slot indicator - shows precise 30-min slot with collision state */}
+          {/* Drop slot indicator - shows precise 30-min slot with collision state (for panel drag) */}
           {isOver && isTargetRow && targetMinute !== null && (
             <div
               className={cn(
@@ -182,6 +185,23 @@ export function HourRow({ hour, items, onCreateTask }: HourRowProps) {
               style={{
                 left: `${(targetMinute / 60) * 100}%`,
                 width: `${(30 / 60) * 100}%`,
+              }}
+            />
+          )}
+
+          {/* Block drag preview - shows where block will be dropped */}
+          {isBlockDragTargetRow && blockDrag.targetMinute !== null && (
+            <div
+              className={cn(
+                "absolute inset-y-1 rounded-md pointer-events-none transition-all z-10",
+                "border-2 border-dashed",
+                blockDrag.isCollision
+                  ? "bg-destructive/20 border-destructive"
+                  : "bg-primary/30 border-primary"
+              )}
+              style={{
+                left: `${(blockDrag.targetMinute / 60) * 100}%`,
+                width: `${(blockDrag.durationMin / 60) * 100}%`,
               }}
             />
           )}

@@ -65,8 +65,11 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
       }))
     );
 
-  // Get resize state setter from context to prevent accidental clicks after resize
-  const { setIsResizing } = useDragState();
+  // Get resize state and block drag state from context
+  const { setIsResizing, blockDrag } = useDragState();
+
+  // Check if this block is currently being dragged
+  const isBeingDragged = blockDrag.blockId === item.id;
 
   // Calculate horizontal position
   const { left, width, isStartBlock, isContinuation, continuesNext } =
@@ -187,6 +190,8 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
           isTimerPaused && "border-amber-500 border-[3px] shadow-md shadow-amber-500/20",
           // Drag/resize states
           (isResizing || isLeftResizing || isDragging) && "select-none ring-2 ring-primary/50",
+          // Block being dragged - show as semi-transparent ghost at original position
+          isBeingDragged && "opacity-40 border-dashed",
           // Visual connection for multi-hour tasks
           continuesNext && "rounded-r-none border-r-0",
           isContinuation && "rounded-l-none border-l-0",
