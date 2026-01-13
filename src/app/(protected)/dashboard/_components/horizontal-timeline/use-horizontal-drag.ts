@@ -1,10 +1,11 @@
 import { useCallback, useState, useRef, type RefObject } from "react";
 import type { TimeBoxItem } from "@/features/dashboard/types";
-import { MINUTE_GRID, MIN_DURATION, HOUR_HEIGHT } from "./constants";
+import { MINUTE_GRID, HOUR_HEIGHT } from "./constants";
 import { snapToGrid } from "./use-block-position";
-import { useDragState } from "../drag-state-context";
+import { useDragState, type GhostDataInput } from "../drag-state-context";
 import { useDashboardStore } from "@/features/dashboard/store/dashboard-store";
 import { useShallow } from "zustand/react/shallow";
+import { dispatchGhostMove } from "./block-drag-ghost";
 
 const DRAG_THRESHOLD = 5; // 5px threshold to distinguish click from drag
 
@@ -26,6 +27,8 @@ type UseHorizontalDragOptions = {
   rowRef: RefObject<HTMLDivElement | null>;
   rowHour: number;
   onStartTimeChange: (id: string, startAt: string) => void;
+  // Ghost data for lift & drop visual feedback (dimensions calculated at drag start)
+  ghostData?: GhostDataInput;
 };
 
 type UseHorizontalDragReturn = {
@@ -36,8 +39,11 @@ type UseHorizontalDragReturn = {
 
 /**
  * Hook for drag-and-drop functionality supporting both horizontal and vertical movement.
- * - Shows ghost preview at target position during drag
- * - Moves block to target position only on drop
+ * Implements "Lift & Drop" UX:
+ * - Original block stays in place (reduced opacity)
+ * - Ghost element follows cursor freely
+ * - Preview shows target position
+ * - Data updates only on drop
  * Snaps to 10-minute grid intervals.
  */
 export function useHorizontalDrag({
@@ -45,6 +51,7 @@ export function useHorizontalDrag({
   rowRef,
   rowHour,
   onStartTimeChange,
+  ghostData,
 }: UseHorizontalDragOptions): UseHorizontalDragReturn {
   const [isDragging, setIsDragging] = useState(false);
   const wasDraggedRef = useRef(false);
@@ -56,7 +63,10 @@ export function useHorizontalDrag({
     isCollision: boolean;
   }>({ hour: null, minute: null, isCollision: false });
 
-  const { startBlockDrag, updateBlockDragTarget, clearBlockDrag } = useDragState();
+  // Ref to store cursor offset for ghost positioning
+  const cursorOffsetRef = useRef({ x: 0, y: 0 });
+
+  const { startBlockDrag, startBlockDragWithGhost, updateBlockDragTarget, clearBlockDrag } = useDragState();
   const timeBoxRef = useRef<TimeBoxItem[]>([]);
   const timeBox = useDashboardStore(useShallow((state) => state.timeBox));
 
@@ -71,13 +81,47 @@ export function useHorizontalDrag({
       wasDraggedRef.current = false;
       dragTargetRef.current = { hour: null, minute: null, isCollision: false };
 
-      // Start block drag with initial state
-      startBlockDrag(item.id, item.startAt, item.durationMin);
+      // Calculate cursor offset from element origin for ghost positioning
+      const rect = e.currentTarget.getBoundingClientRect();
+      cursorOffsetRef.current = {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      };
 
-      const rowWidth = rowRef.current?.offsetWidth ?? 1;
+      // Start block drag with ghost data if provided
+      if (ghostData) {
+        // Calculate full ghost data with dimensions from the element
+        const fullGhostData = {
+          ...ghostData,
+          width: rect.width,
+          height: rect.height,
+        };
+        startBlockDragWithGhost(
+          item.id,
+          item.startAt,
+          item.durationMin,
+          fullGhostData,
+          cursorOffsetRef.current
+        );
+        // Initialize ghost position
+        dispatchGhostMove(
+          e.clientX - cursorOffsetRef.current.x,
+          e.clientY - cursorOffsetRef.current.y
+        );
+      } else {
+        startBlockDrag(item.id, item.startAt, item.durationMin);
+      }
+
+      // Capture row dimensions for coordinate calculations
+      const rowRect = rowRef.current?.getBoundingClientRect();
+      const rowWidth = rowRect?.width ?? 1;
+      const rowLeft = rowRect?.left ?? 0;
+
+      // Capture starting state
       const startX = e.clientX;
       const startY = e.clientY;
-      const startTotalMinutes = timeToMinutes(item.startAt);
+      const startHour = Math.floor(timeToMinutes(item.startAt) / 60);
+      const startMinute = timeToMinutes(item.startAt) % 60;
       const duration = item.durationMin;
 
       const handleMouseMove = (moveEvent: MouseEvent) => {
@@ -88,35 +132,44 @@ export function useHorizontalDrag({
           wasDraggedRef.current = true;
         }
 
-        const deltaX = moveEvent.clientX - startX;
+        // Update ghost position (bypasses React state for smooth updates)
+        if (ghostData) {
+          dispatchGhostMove(
+            moveEvent.clientX - cursorOffsetRef.current.x,
+            moveEvent.clientY - cursorOffsetRef.current.y
+          );
+        }
+
         const deltaY = moveEvent.clientY - startY;
 
-        // 수평 이동: 분 변경 (1시간 = rowWidth 픽셀)
-        const minutesPerPixelX = 60 / rowWidth;
-        const horizontalMinDelta = deltaX * minutesPerPixelX;
+        // === INDEPENDENT X/Y CALCULATIONS ===
 
-        // 수직 이동: 시간 변경 (1시간 = HOUR_HEIGHT 픽셀)
-        // 아래로 드래그(+deltaY) = 나중 시간(+분)
-        const minutesPerPixelY = 60 / HOUR_HEIGHT;
-        const verticalMinDelta = deltaY * minutesPerPixelY;
+        // 1. HOUR: Calculate from Y delta only (vertical movement)
+        // Round to snap to nearest row
+        const hourDelta = Math.round(deltaY / HOUR_HEIGHT);
+        let targetHour = startHour + hourDelta;
 
-        // 수평 + 수직 델타 합산 후 그리드 스냅
-        const totalRawDelta = horizontalMinDelta + verticalMinDelta;
-        const deltaMin = snapToGrid(totalRawDelta, MINUTE_GRID);
+        // 2. MINUTE: Calculate from absolute X position (horizontal position)
+        // Use cursor X relative to row, independent of Y movement
+        const cursorX = moveEvent.clientX;
+        const relativeX = cursorX - rowLeft;
+        const percentX = Math.max(0, Math.min(1, relativeX / rowWidth));
+        const rawMinute = percentX * 60;
+        let targetMinute = snapToGrid(rawMinute, MINUTE_GRID);
 
-        // 새로운 시작 시간 계산
-        const newTotalMinutes = startTotalMinutes + deltaMin;
+        // 3. Clamp minute to valid range (0-50 for 10-min grid with standard blocks)
+        targetMinute = Math.max(0, Math.min(50, targetMinute));
 
-        // 범위 제한: 00:00 ~ (24:00 - duration)
+        // 4. Clamp hour to valid range and ensure block doesn't extend past 24:00
         const maxStartMinutes = 24 * 60 - duration;
-        const clampedMinutes = Math.max(0, Math.min(maxStartMinutes, newTotalMinutes));
+        let totalMinutes = targetHour * 60 + targetMinute;
 
-        // 그리드 스냅
-        const snappedMinutes = snapToGrid(clampedMinutes, MINUTE_GRID);
+        // Clamp total time to valid range
+        totalMinutes = Math.max(0, Math.min(maxStartMinutes, totalMinutes));
 
-        // 시간과 분으로 분리
-        const targetHour = Math.floor(snappedMinutes / 60);
-        const targetMinute = snappedMinutes % 60;
+        // Recalculate hour and minute after clamping
+        targetHour = Math.floor(totalMinutes / 60);
+        targetMinute = snapToGrid(totalMinutes % 60, MINUTE_GRID);
 
         // Check collision with current timeBox (excluding self)
         const currentTimeBox = timeBoxRef.current;
@@ -166,7 +219,7 @@ export function useHorizontalDrag({
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
-    [item.id, item.startAt, item.durationMin, rowRef, onStartTimeChange, startBlockDrag, updateBlockDragTarget, clearBlockDrag]
+    [item.id, item.startAt, item.durationMin, rowRef, onStartTimeChange, ghostData, startBlockDrag, startBlockDragWithGhost, updateBlockDragTarget, clearBlockDrag]
   );
 
   return { isDragging, wasDraggedRef, handleDragStart };

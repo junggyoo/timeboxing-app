@@ -99,12 +99,22 @@ export function HourBlock({ item, rowHour, rowRef }: HourBlockProps) {
     onResizeStateChange: setIsResizing,
   });
 
+  // Ghost data for drag visualization (title and color, dimensions calculated at drag start)
+  const ghostData = useMemo(
+    () => ({
+      title: item.title,
+      color: taskColor,
+    }),
+    [item.title, taskColor]
+  );
+
   // Horizontal drag hook (only for start blocks)
   const { isDragging, wasDraggedRef, handleDragStart } = useHorizontalDrag({
     item,
     rowRef,
     rowHour,
     onStartTimeChange: updateTimeBlockStartTime,
+    ghostData,
   });
 
   // Click handler that checks for drag to prevent accidental edit mode

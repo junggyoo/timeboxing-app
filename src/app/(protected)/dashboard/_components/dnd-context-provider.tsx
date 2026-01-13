@@ -20,6 +20,7 @@ import { useShallow } from "zustand/react/shallow";
 import { GripVertical } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { DragStateProvider, useDragState } from "./drag-state-context";
+import { BlockDragGhost } from "./horizontal-timeline/block-drag-ghost";
 
 type DndContextProviderProps = {
   children: ReactNode;
@@ -182,6 +183,7 @@ export function DndContextProvider({ children }: DndContextProviderProps) {
   return (
     <DragStateProvider>
       <DndContextInner>{children}</DndContextInner>
+      <BlockDragGhost />
     </DragStateProvider>
   );
 }

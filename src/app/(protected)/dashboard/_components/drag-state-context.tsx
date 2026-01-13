@@ -3,6 +3,20 @@
 import { createContext, useContext, useState, useCallback, useRef, ReactNode } from "react";
 import type { TimeBoxItem } from "@/features/dashboard/types";
 
+// Ghost data for rendering the dragged block visually
+export type GhostData = {
+  title: string;
+  width: number;
+  height: number;
+  color: { bg: string; border: string };
+};
+
+// Input type for ghost data (without dimensions, which are calculated at drag start)
+export type GhostDataInput = {
+  title: string;
+  color: { bg: string; border: string };
+};
+
 // Block drag state for drag-and-drop within timeline
 type BlockDragState = {
   blockId: string | null;
@@ -11,6 +25,10 @@ type BlockDragState = {
   targetHour: number | null;
   targetMinute: number | null;
   isCollision: boolean;
+  // Ghost element data for visual feedback
+  ghostData: GhostData | null;
+  // Cursor offset from block origin for accurate ghost positioning
+  cursorOffset: { x: number; y: number } | null;
 };
 
 type DragState = {
@@ -28,6 +46,13 @@ type DragState = {
   // Block drag state for timeline block repositioning
   blockDrag: BlockDragState;
   startBlockDrag: (blockId: string, startAt: string, durationMin: number) => void;
+  startBlockDragWithGhost: (
+    blockId: string,
+    startAt: string,
+    durationMin: number,
+    ghostData: GhostData,
+    cursorOffset: { x: number; y: number }
+  ) => void;
   updateBlockDragTarget: (hour: number, minute: number, timeBox: TimeBoxItem[], excludeBlockId: string) => void;
   endBlockDrag: () => { targetHour: number | null; targetMinute: number | null; isCollision: boolean };
   clearBlockDrag: () => void;
@@ -93,6 +118,8 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
     targetHour: null,
     targetMinute: null,
     isCollision: false,
+    ghostData: null,
+    cursorOffset: null,
   });
 
   // Track resize state and record end time
@@ -133,8 +160,33 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
       targetHour: null,
       targetMinute: null,
       isCollision: false,
+      ghostData: null,
+      cursorOffset: null,
     });
   }, []);
+
+  // Start block drag with ghost element data for visual feedback
+  const startBlockDragWithGhost = useCallback(
+    (
+      blockId: string,
+      startAt: string,
+      durationMin: number,
+      ghostData: GhostData,
+      cursorOffset: { x: number; y: number }
+    ) => {
+      setBlockDrag({
+        blockId,
+        originalStartAt: startAt,
+        durationMin,
+        targetHour: null,
+        targetMinute: null,
+        isCollision: false,
+        ghostData,
+        cursorOffset,
+      });
+    },
+    []
+  );
 
   const updateBlockDragTarget = useCallback(
     (hour: number, minute: number, timeBox: TimeBoxItem[], excludeBlockId: string) => {
@@ -165,6 +217,8 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
       targetHour: null,
       targetMinute: null,
       isCollision: false,
+      ghostData: null,
+      cursorOffset: null,
     });
   }, []);
 
@@ -183,6 +237,7 @@ export function DragStateProvider({ children }: DragStateProviderProps) {
         wasJustResizing,
         blockDrag,
         startBlockDrag,
+        startBlockDragWithGhost,
         updateBlockDragTarget,
         endBlockDrag,
         clearBlockDrag,
